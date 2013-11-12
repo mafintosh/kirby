@@ -1,10 +1,10 @@
 # Kirby
 
-Cloud control for AWS.
+Cloud control command-line tool for AWS.
 
 It is available through npm
 
-	npm install kirby
+	npm install -g kirby
 
 ## Usage
 
