@@ -91,10 +91,13 @@ tab('*')
 tab('profile')(profileNames)
 	('--access', '-a')
 	('--secret', '-s')
+	('--default', '-d')
 	('--region', REGIONS)
 	(function(name, opts) {
 		var profile = profiles.get(name || opts.profile) || {};
 		if (!profile.name) profile.name = name || opts.profile || 'default';
+
+		if (opts.default) profile.name = 'default';
 		if (opts.access) profile.access = opts.access;
 		if (opts.secret) profile.secret = opts.secret;
 		if (opts.region) profile.region = opts.region;
