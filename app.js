@@ -203,6 +203,11 @@ var complete = function(key) {
 	};
 };
 
+var clearCache = function(opts) {
+	profile(opts).cache('name', null);
+	profile(opts).cache('id', null);
+};
+
 tab('launch')(names)
 	('--type', '-t', TYPES)
 	('--zone', '-z', complete('zones'))
@@ -219,6 +224,7 @@ tab('launch')(names)
 			opts.loadBalancer = opts['load-balancer'];
 			kirby(opts).launch(name, opts, function(err, instance) {
 				if (err) return error(err);
+				clearCache();
 				output(instance);
 			});
 		};
@@ -240,6 +246,7 @@ tab('terminate')(names)
 	(function(name, opts) {
 		kirby(opts).terminate(name, function(err, inst) {
 			if (err) return error(err);
+			clearCache();
 			output(inst);
 		});
 	});
