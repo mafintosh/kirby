@@ -1,6 +1,16 @@
 {
   "name": "kirby",
   "version": "0.1.0",
+  "description": "Cloud control command line app for AWS",
+  "keywords": [
+    "aws",
+    "cloud",
+    "command-line",
+    "amazon",
+    "web",
+    "services"
+  ],
+  "repository": "git://github.com/mafintosh/kirby.git",
   "bin": {
     "kirby": "./app.js"
   },
