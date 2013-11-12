@@ -36,22 +36,23 @@ var profiles = config.split(/\[(?:profile )?/)
 			return (profile.match(regex) || [])[1];
 		};
 
-		var name = match(/(^.+)]/);
-
-		return {
-			name: name,
+		var result = {
+			name: match(/(^.+)]/),
 			access: match(/aws_access_key_id\s*=\s*(.+)/),
 			secret: match(/aws_secret_access_key\s*=\s+(.+)/),
-			region: match(/region\s*=\s*(.+)/),
-			cache: function(key, value) {
-				key = name+'.'+key;
-				var now = Date.now();
-				if (arguments.length === 1) return cache[key] && now < cache[key].mtime + TTL && cache[key].value;
-				cache[key] = {mtime:now, value:value};
-				fs.writeFileSync(AWS_CACHE, JSON.stringify(cache, null, '  '));
-				return value;
-			}
+			region: match(/region\s*=\s*(.+)/)
 		};
+
+		result.cache = function(key, value) {
+			key = result.access+'.'+key;
+			var now = Date.now();
+			if (arguments.length === 1) return cache[key] && now < cache[key].mtime + TTL && cache[key].value;
+			cache[key] = {mtime:now, value:value};
+			fs.writeFileSync(AWS_CACHE, JSON.stringify(cache, null, '  '));
+			return value;
+		};
+
+		return result;
 	})
 	.filter(function(profile) {
 		return profile;
