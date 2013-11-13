@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "aws-sdk": "~1.12.0",
-    "tabalot": "~0.2.6",
+    "tabalot": "~0.2.7",
     "thunky": "~0.1.0",
     "ssh2": "~0.2.13",
     "stream-wrapper": "~0.1.2",
