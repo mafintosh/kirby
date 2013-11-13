@@ -94,13 +94,13 @@ tab('profile')(profileNames)
 	('--default', '-d')
 	('--region', REGIONS)
 	(function(name, opts) {
-		var profile = profiles.get(name || opts.profile) || {};
-		if (!profile.name) profile.name = name || opts.profile || 'default';
+		var old = profiles.get(name || opts.profile) || {};
+		var profile = {};
 
-		if (opts.default) profile.name = 'default';
-		if (opts.access) profile.access = opts.access;
-		if (opts.secret) profile.secret = opts.secret;
-		if (opts.region) profile.region = opts.region;
+		profile.name = opts.default ? 'default' : old.name || name || opts.profile || 'default';
+		profile.access = opts.access || old.access;
+		profile.secret = opts.secret || old.secret;
+		profile.region = opts.region || old.region;
 
 		if (!profile.region || !profile.access || !profile.secret) {
 			return error('you need to specify\n--access [access-key]\n--secret [secret-key]\n--region [region]');
