@@ -1,6 +1,6 @@
 {
   "name": "kirby",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Cloud control command line app for AWS",
   "keywords": [
     "aws",
