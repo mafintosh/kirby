@@ -106,7 +106,8 @@ tab('profile')(profileNames)
 			return error('you need to specify\n--access [access-key]\n--secret [secret-key]\n--region [region]');
 		}
 
-		kirby(profile).describe(function(err, description) {
+		require('./index')(profile).describe(function(err, description) {
+			if (err) console.log(err);
 			if (err) return error('profile could not be authenticated');
 			profile = profiles.save(profile);
 			output(profile);
