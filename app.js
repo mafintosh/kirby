@@ -107,7 +107,6 @@ tab('profile')(profileNames)
 		}
 
 		require('./index')(profile).describe(function(err, description) {
-			if (err) console.log(err);
 			if (err) return error('profile could not be authenticated');
 			profile = profiles.save(profile);
 			output(profile);
