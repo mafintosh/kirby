@@ -224,7 +224,7 @@ tab('launch')(names)
 			opts.loadBalancer = opts['load-balancer'];
 			kirby(opts).launch(name, opts, function(err, instance) {
 				if (err) return error(err);
-				clearCache();
+				clearCache(opts);
 				output(instance);
 			});
 		};
@@ -246,7 +246,7 @@ tab('terminate')(names)
 	(function(name, opts) {
 		kirby(opts).terminate(name, function(err, inst) {
 			if (err) return error(err);
-			clearCache();
+			clearCache(opts);
 			output(inst);
 		});
 	});
