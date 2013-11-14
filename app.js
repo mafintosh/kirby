@@ -154,10 +154,7 @@ var script = function(val, def, callback) {
 	}
 
 	if (!fs.existsSync(val)) return error('script file does not exist');
-	require('./editor')(val, function(err) {
-		if (err) return error(err);
-		callback(fs.readFileSync(val, 'utf-8'));
-	});
+	callback(fs.readFileSync(val, 'utf-8'));
 };
 
 tab('exec')(names)

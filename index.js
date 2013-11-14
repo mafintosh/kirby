@@ -359,7 +359,6 @@ var kirby = function(config) {
 		var onlaunched = function(id) {
 			that.instances(id, function(err, instances) {
 				if (err) return callback(err);
-				instances[0].script = opts.script;
 				callback(null, instances[0]);
 			});
 		};
