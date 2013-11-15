@@ -408,7 +408,7 @@ var kirby = function(config) {
 			});
 		};
 
-		if (opts.defaults === false) return ensureZone();
+		if (opts.defaults === false) return launch();
 
 		that.instances(opts.defaults || filter, function(err, instances) {
 			if (err) return callback(err);
