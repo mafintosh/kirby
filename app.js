@@ -243,6 +243,7 @@ tab('launch')(names)
 	('--load-balancer', '-l', complete('loadBalancers'))
 	('--script', '-s', '@file')
 	('--ami', '-i', completeImages)
+	('--wait', '-w')
 	('--defaults', '-d')
 	('--no-defaults')
 	(function(name, opts) {

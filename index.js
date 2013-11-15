@@ -357,10 +357,24 @@ var kirby = function(config) {
 		};
 
 		var onlaunched = function(id) {
-			that.instances(id, function(err, instances) {
-				if (err) return callback(err);
-				callback(null, instances[0]);
-			});
+			var lookup = function(callback) {
+				that.instances(id, function(err, instances) {
+					if (err) return callback(err);
+					callback(null, instances[0]);
+				});
+			};
+
+			if (!opts.wait) return lookup(callback);
+
+			var wait = function() {
+				lookup(function(err, instance) {
+					if (err) return callback(err);
+					if (instance.state === 'running') return callback(null, instance);
+					setTimeout(wait, 2000);
+				});
+			};
+
+			wait();
 		};
 
 		var launch = function() {
