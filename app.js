@@ -189,6 +189,28 @@ tab('exec')(names)
 		process.stdin.pipe(proc);
 	});
 
+var knownImages = function(opts, callback) {
+	var prof = profile(opts);
+
+	if (!prof) return callback();
+	if (prof.cache('images')) return callback(null, prof.cache('images'));
+
+	var request = require('request');
+	request('http://cloud-images.ubuntu.com/locator/ec2/releasesTable', function(err, response) {
+		if (err) return callback(err);
+
+		var body = JSON.parse(response.body.replace(/,\s+\]/, ']'));
+		var images = {};
+
+		body.aaData.forEach(function(ami) {
+			if (ami[2] === 'Devel' || ami[2].indexOf(' EOL') > -1 || ami[0] !== prof.region) return;
+			images['ubuntu-'+ami.slice(2, 5).join('-').replace(' LTS', '')] = ami[6].match(/>(.*)</)[1];
+		});
+
+		callback(null, prof.cache('images', images));
+	});
+};
+
 var complete = function(key) {
 	return function(word, opts, callback) {
 		if (profile(opts).cache('description')) return callback(null, profile(opts).cache('description')[key]);
@@ -198,6 +220,13 @@ var complete = function(key) {
 			callback(null, desc[key]);
 		});
 	};
+};
+
+var completeImages = function(word, opts, callback) {
+	knownImages(opts, function(err, images) {
+		if (err) return callback(err);
+		callback(null, Object.keys(images));
+	});
 };
 
 var clearCache = function(opts) {
@@ -213,16 +242,20 @@ tab('launch')(names)
 	('--role', '-r', complete('roles'))
 	('--load-balancer', '-l', complete('loadBalancers'))
 	('--script', '-s', '@file')
-	('--ami', '-i')
+	('--ami', '-i', completeImages)
 	('--defaults', '-d')
 	('--no-defaults')
 	(function(name, opts) {
 		var ready = function() {
-			opts.loadBalancer = opts['load-balancer'];
-			kirby(opts).launch(name, opts, function(err, instance) {
+			knownImages(opts, function(err, images) {
 				if (err) return error(err);
-				clearCache(opts);
-				output(instance);
+				opts.ami = images[opts.ami] || opts.ami;
+				opts.loadBalancer = opts['load-balancer'];
+				kirby(opts).launch(name, opts, function(err, instance) {
+					if (err) return error(err);
+					clearCache(opts);
+					output(instance);
+				});
 			});
 		};
 
