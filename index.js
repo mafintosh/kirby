@@ -159,6 +159,7 @@ var kirby = function(config) {
 
 		var wait = parallel(function(err, instances, loadBalancers) {
 			if (err) return callback(err);
+			if (!loadBalancers) loadBalancers = {};
 
 			instances = instances
 				.map(function(inst) {
@@ -166,6 +167,7 @@ var kirby = function(config) {
 						instanceId: inst.InstanceId,
 						name: getName(inst),
 						loadBalancer: loadBalancers[inst.InstanceId],
+						privateDns: inst.PrivateDnsName,
 						publicDns: inst.PublicDnsName,
 						instanceType: inst.InstanceType,
 						securityGroup: getGroup(inst),
@@ -209,11 +211,11 @@ var kirby = function(config) {
 		};
 
 		describeInstances(filter, wait());
-		instanceToLoadBalancer(wait());
+		if (opts.loadBalancer === false) instanceToLoadBalancer(wait());
 	};
 
 	var describeHostnames = function(filter, callback) {
-		that.instances(filter, function(err, instances) {
+		that.instances(filter, {loadBalancer:false}, function(err, instances) {
 			if (err) return callback(err);
 
 			var hostnames = instances
@@ -276,13 +278,14 @@ var kirby = function(config) {
 				};
 
 				var exec = function(connect, callback) {
+					console.log('exec now');
 					connect(function(err, c) {
 						if (err) return duplex.emit('error', err);
 
 						c.on('error', function(err) {
 							duplex.emit('error', err);
 						});
-
+						console.log('really execing now');
 						c.exec(buffers, function(err, stream) {
 							if (err) return duplex.emit('error', err);
 

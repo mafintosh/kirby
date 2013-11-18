@@ -10,7 +10,7 @@ var USERS = ['ubuntu', 'ec2-user', 'root'];
 
 var SELECTIONS = [
 	'instance-id', 'name', 'load-balancer', 'public-dns', 'instance-type', 'security-group', 'iam-role',
-	'launch-time', 'instance-state', 'availability-zone', 'key-name', 'ami'
+	'launch-time', 'instance-state', 'availability-zone', 'key-name', 'ami', 'private-dns'
 ];
 
 var REGIONS = [
