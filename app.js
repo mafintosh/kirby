@@ -24,7 +24,11 @@ var USERS = [
 var noop = function() {};
 
 var kirby = function(opts) {
-	return require('./index')(opts);
+	return require('./index')({
+		region:opts.region,
+		key:opts['aws-access-key'],
+		secret:opts['aws-secret-key']
+	});
 };
 
 var error = function(err) {
@@ -61,7 +65,9 @@ var output = function(list, color) {
 };
 
 var instanceProperty = function(name, opts, callback) {
-	if (profiles.get(opts).cache(name)) return callback(null, profiles.get(opts).cache(name));
+	opts = profiles.defaults(opts);
+
+	if (opts.cache(name)) return callback(null, opts.cache(name));
 	kirby(opts).instances(function(err, list) {
 		if (err) return callback(err);
 
@@ -70,77 +76,37 @@ var instanceProperty = function(name, opts, callback) {
 			uniq[instance[name]] = true;
 		});
 
-		callback(null, profiles.get(opts).cache(name, Object.keys(uniq)));
+		callback(null, opts.cache(name, Object.keys(uniq)));
 	});
 };
 
 var names = function(word, opts, callback) {
-	instanceProperty(word.slice(0,2) === 'i-' ? 'id' : 'name', opts, callback);
+	instanceProperty(word.slice(0,2) === 'i-' ? 'instanceId' : 'name', opts, callback);
 };
 
 var profileNames = function(callback) {
 	callback(null, profiles.names());
 };
 
-var knownImages = function(opts, callback) {
-	var prof = profiles.get(opts);
-
-	if (!prof) return callback();
-	if (prof.cache('images')) return callback(null, prof.cache('images'));
-
-	var request = require('request');
-	request('http://cloud-images.ubuntu.com/locator/ec2/releasesTable', function(err, response) {
-		if (err) return callback(err);
-
-		var body = JSON.parse(response.body.replace(/,\s+\]/, ']'));
-		var images = {};
-
-		body.aaData.forEach(function(ami) {
-			if (ami[2] === 'Devel' || ami[2].indexOf(' EOL') > -1 || ami[0] !== prof.region) return;
-			images['ubuntu-'+ami.slice(2, 5).join('-').replace(' LTS', '')] = ami[6].match(/>(.*)</)[1];
-		});
-
-		callback(null, prof.cache('images', images));
-	});
-};
-
-var complete = function(key) {
-	return function(word, opts, callback) {
-		if (profiles.get(opts).cache('description')) return callback(null, profiles.get(opts).cache('description')[key]);
-		kirby(opts).describe(function(err, desc) {
-			if (err) return callback(err);
-			profiles.get(opts).cache('description', desc);
-			callback(null, desc[key]);
-		});
-	};
-};
-
-var completeImages = function(word, opts, callback) {
-	knownImages(opts, function(err, images) {
-		if (err) return callback(err);
-		callback(null, Object.keys(images));
-	});
-};
-
 tab('*')
 	('--profile', '-p', profileNames);
 
 tab('profile')(profileNames)
-	('--access', '-a')
-	('--secret', '-s')
+	('--aws-access-key', '-a')
+	('--aws-secret-key', '-s')
 	('--region', '-r', REGIONS)
 	('--force', '-f')
 	(function(name, opts) {
-		opts = profiles.get(name || opts.profile || 'default', opts);
+		opts = profiles.defaults(name || opts.profile || 'default', opts);
 
 		var profile = {};
 		profile.profile = opts.profile;
 		profile.region = opts.region;
-		profile.access = opts.access;
-		profile.secret = opts.secret;
+		profile['aws-access-key'] = opts['aws-access-key'];
+		profile['aws-secret-key'] = opts['aws-secret-key'];
 
-		if (!opts.force && (!profile.region || !profile.key || !profile.secret)) {
-			return error('you need to specify\n--access [access-key]\n--secret [secret-key]\n--region [region]');
+		if (!opts.force && (!profile.region || !profile['aws-access-key'] || !profile['aws-secret-key'])) {
+			return error('you need to specify\n--aws-access-key [access-key]\n--aws-secret-key [secret-key]\n--region [region]');
 		}
 
 		var onvalidated = function() {
@@ -150,7 +116,7 @@ tab('profile')(profileNames)
 
 		if (opts.force) return onvalidated();
 
-		require('./index')(profile).describe(function(err, description) {
+		kirby(profile).describe(function(err, description) {
 			if (err) return error('profile could not be authenticated');
 			onvalidated();
 		});
@@ -158,7 +124,7 @@ tab('profile')(profileNames)
 
 tab('script')(names)
 	(function(name, opts) {
-		opts = profiles.get(opts);
+		opts = profiles.defaults(opts);
 
 		kirby(opts).script(name, function(err, script) {
 			if (err) return callback(err);
@@ -171,7 +137,7 @@ tab('list')(names)
 	('--running', '-r')
 	('--one')
 	(function(name, opts) {
-		opts = profiles.get(opts);
+		opts = profiles.defaults(opts);
 
 		kirby(opts).instances(name, opts, function(err, instances) {
 			if (err) return error(err);
@@ -181,7 +147,7 @@ tab('list')(names)
 
 tab('hostnames')(names)
 	(function(name, opts) {
-		opts = profiles.get(opts);
+		opts = profiles.defaults(opts);
 
 		kirby(opts).hostnames(name, function(err, list) {
 			if (err) return error(err);
@@ -213,7 +179,7 @@ tab('exec')(names)
 	('--key', '-k', '-i', '@file')
 	('--script', '-s', '@file')
 	(function(name, opts) {
-		opts = profile.get(opts);
+		opts = profiles.defaults(opts);
 
 		var key = opts.key || path.join(HOME, '.ssh', 'id_rsa');
 		if (fs.existsSync(key)) opts.key = fs.readFileSync(key);
@@ -239,17 +205,59 @@ tab('exec')(names)
 		process.stdin.pipe(proc);
 	});
 
+var knownImages = function(opts, callback) {
+	opts = profiles.defaults(opts);
+
+	if (!opts) return callback();
+	if (opts.cache('amis')) return callback(null, opts.cache('amis'));
+
+	var request = require('request');
+	request('http://cloud-images.ubuntu.com/locator/ec2/releasesTable', function(err, response) {
+		if (err) return callback(err);
+
+		var body = JSON.parse(response.body.replace(/,\s+\]/, ']'));
+		var images = {};
+
+		body.aaData.forEach(function(ami) {
+			if (ami[2] === 'Devel' || ami[2].indexOf(' EOL') > -1 || ami[0] !== opts.region) return;
+			images['ubuntu-'+ami.slice(2, 5).join('-').replace(' LTS', '')] = ami[6].match(/>(.*)</)[1];
+		});
+
+		callback(null, opts.cache('amis', images));
+	});
+};
+
+var complete = function(key) {
+	return function(word, opts, callback) {
+		opts = profiles.defaults(opts);
+
+		if (opts.cache('description')) return callback(null, opts.cache('description')[key]);
+		kirby(opts).describe(function(err, desc) {
+			if (err) return callback(err);
+			opts.cache('description', desc);
+			callback(null, desc[key]);
+		});
+	};
+};
+
+var completeImages = function(word, opts, callback) {
+	knownImages(opts, function(err, images) {
+		if (err) return callback(err);
+		callback(null, Object.keys(images));
+	});
+};
+
 var clearCache = function(opts) {
 	opts.cache('name', null);
-	opts.cache('id', null);
+	opts.cache('instanceId', null);
 };
 
 tab('launch')(names)
-	('--type', '-t', TYPES)
-	('--zone', '-z', complete('zones'))
-	('--key', '-k', complete('keys'))
-	('--group', '-g', complete('groups'))
-	('--role', '-r', complete('roles'))
+	('--instance-type', '-t', TYPES)
+	('--availability-zone', '-z', complete('availabilityZones'))
+	('--key-name', '-k', complete('keyNames'))
+	('--security-group', '-g', complete('securityGroups'))
+	('--iam-role', '-r', complete('iamRoles'))
 	('--load-balancer', '-l', complete('loadBalancers'))
 	('--script', '-s', '@file')
 	('--ami', '-i', completeImages)
@@ -257,13 +265,21 @@ tab('launch')(names)
 	('--defaults', '-d')
 	('--no-defaults')
 	(function(name, opts) {
-		opts = profile.get(opts);
+		opts = profiles.defaults(opts);
 
 		var ready = function() {
 			knownImages(opts, function(err, images) {
 				if (err) return error(err);
-				opts.ami = images[opts.ami] || opts.ami;
-				opts.loadBalancer = opts['load-balancer'];
+
+				var ami = images[opts.ami] || opts.ami;
+
+				if (ami) opts.ami = ami;
+				if (opts['key-name']) opts.keyName = opts['key-name'];
+				if (opts['availability-zone']) opts.availabilityZone = opts['availability-zone'];
+				if (opts['load-balancer']) opts.loadBalancer = opts['load-balancer'];
+				if (opts['security-group']) opts.securityGroup = opts['security-group'];
+				if (opts['iam-role']) opts.iamRole = opts['iam-role'];
+
 				kirby(opts).launch(name, opts, function(err, instance) {
 					if (err) return error(err);
 					clearCache(opts);
@@ -287,7 +303,7 @@ tab('launch')(names)
 
 tab('terminate')(names)
 	(function(name, opts) {
-		opts = profile.get(opts);
+		opts = profiles.defaults(opts);
 
 		kirby(opts).terminate(name, function(err, inst) {
 			if (err) return error(err);

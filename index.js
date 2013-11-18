@@ -39,7 +39,7 @@ var kirby = function(config) {
 
 	if (config) {
 		AWS.config.update({
-			accessKeyId: config.access,
+			accessKeyId: config.key,
 			secretAccessKey: config.secret,
 			region: config.region
 		});
@@ -138,10 +138,10 @@ var kirby = function(config) {
 
 			callback(null, {
 				loadBalancers:loadBalancers,
-				roles:roles,
-				zones:zones,
-				keys:keys,
-				groups:groups
+				iamRoles:roles,
+				availabilityZones:zones,
+				keyNames:keys,
+				securityGroups:groups
 			});
 		});
 
@@ -163,28 +163,30 @@ var kirby = function(config) {
 			instances = instances
 				.map(function(inst) {
 					return {
-						id: inst.InstanceId,
+						instanceId: inst.InstanceId,
 						name: getName(inst),
 						loadBalancer: loadBalancers[inst.InstanceId],
-						hostname: inst.PublicDnsName,
-						type: inst.InstanceType,
-						group: getGroup(inst),
-						launched: inst.LaunchTime,
-						state: inst.State.Name,
-						zone: inst.Placement.AvailabilityZone,
-						role: inst.IamInstanceProfile && inst.IamInstanceProfile.Arn.split('/').pop(),
-						ami: inst.ImageId,
-						key: inst.KeyName
+						publicDns: inst.PublicDnsName,
+						instanceType: inst.InstanceType,
+						securityGroup: getGroup(inst),
+						iamRole: inst.IamInstanceProfile && inst.IamInstanceProfile.Arn.split('/').pop(),
+						launchTime: inst.LaunchTime,
+						instanceState: inst.State.Name,
+						availabilityZone: inst.Placement.AvailabilityZone,
+						keyName: inst.KeyName,
+						ami: inst.ImageId
 					}
 				})
 				.sort(function(a, b) {
-					if (a.state !== 'running' || b.state !== 'running') return (STATE_RANKS[b.state] || 0) - (STATE_RANKS[a.state] || 0);
-					return b.launched.getTime() - a.launched.getTime();
+					var stateA = a.instanceState;
+					var stateB = b.instanceState;
+					if (stateA !== 'running' || stateB !== 'running') return (STATE_RANKS[stateB] || 0) - (STATE_RANKS[stateA] || 0);
+					return b.launchTime.getTime() - a.launchTime.getTime();
 				});
 
 			if (opts.running) {
 				instances = instances.filter(function(inst) {
-					return inst.state === 'running';
+					return inst.instanceState === 'running';
 				});
 			}
 
@@ -218,7 +220,7 @@ var kirby = function(config) {
 
 			var hostnames = instances
 				.map(function(inst) {
-					return inst.state === 'running' && inst.hostname;
+					return inst.state === 'running' && inst.publicDns;
 				})
 				.filter(function(hostname) {
 					return hostname;
@@ -317,7 +319,7 @@ var kirby = function(config) {
 			if (err) return callback(err);
 			if (!instances.length) return callback();
 
-			var id = instances[0].id;
+			var id = instances[0].instanceId;
 			var ec2 = new AWS.EC2();
 			ec2.describeInstanceAttribute({
 				InstanceId: id,
@@ -345,13 +347,13 @@ var kirby = function(config) {
 		if (opts.defaults) opts.name = filter;
 
 		var ensureZone = function(callback) {
-			if (opts.zone) return callback();
+			if (opts.availabilityZone) return callback();
 			if (!opts.loadBalancer) return callback();
 
 			elb.describeLoadBalancers({LoadBalancerNames:[opts.loadBalancer]}, function(err, result) {
 				if (err) return callback(err);
 				var defaultZones = result ? result.LoadBalancerDescriptions[0].AvailabilityZones : [];
-				opts.zone = defaultZones[Math.floor(Math.random() * defaultZones.length)];
+				opts.availabilityZone = defaultZones[Math.floor(Math.random() * defaultZones.length)];
 				callback();
 			});
 		};
@@ -369,7 +371,7 @@ var kirby = function(config) {
 			var wait = function() {
 				lookup(function(err, instance) {
 					if (err) return callback(err);
-					if (instance.state === 'running') return callback(null, instance);
+					if (instance.instanceState === 'running') return callback(null, instance);
 					setTimeout(wait, 2000);
 				});
 			};
@@ -389,12 +391,12 @@ var kirby = function(config) {
 			ensureZone(function(err) {
 				if (err) return callback(err);
 
-				if (opts.key)    conf.KeyName = opts.key;
-				if (opts.group)  conf.SecurityGroups = [opts.group];
+				if (opts.keyName) conf.KeyName = opts.keyName;
+				if (opts.securityGroup) conf.SecurityGroups = [].concat(opts.securityGroup);
 				if (opts.script) conf.UserData = new Buffer(opts.script, 'utf-8').toString('base64');
-				if (opts.type)   conf.InstanceType = opts.type;
-				if (opts.zone)   conf.Placement = {AvailabilityZone: opts.zone};
-				if (opts.role)   conf.IamInstanceProfile = {Name: opts.role};
+				if (opts.instanceType) conf.InstanceType = opts.instanceType;
+				if (opts.availabilityZone) conf.Placement = {AvailabilityZone: opts.availabilityZone};
+				if (opts.iamRole) conf.IamInstanceProfile = {Name: opts.iamRole};
 
 				ec2.runInstances(conf, function(err, result) {
 					if (err) return callback(err);
@@ -428,10 +430,13 @@ var kirby = function(config) {
 			if (err) return callback(err);
 			if (!instances.length) return launch();
 
-			delete instances[0].zone;
-			opts = xtend(instances[0], opts);
+			var inst = instances[0];
+
+			delete inst.availabilityZone;
+			opts = xtend(inst, opts);
+
 			if (opts.script) return launch();
-			that.script(instances[0].id, function(err, script) {
+			that.script(inst.instanceId, function(err, script) {
 				if (err) return callback(err);
 				opts.script = script;
 				launch();
@@ -452,9 +457,9 @@ var kirby = function(config) {
 			if (!inst) return callback();
 
 			var ec2 = new AWS.EC2();
-			ec2.terminateInstances({InstanceIds:[inst.id]}, function(err, result) {
+			ec2.terminateInstances({InstanceIds:[inst.instanceId]}, function(err, result) {
 				if (err) return callback(err);
-				inst.state = result.TerminatingInstances[0].CurrentState.Name;
+				inst.instanceState = result.TerminatingInstances[0].CurrentState.Name;
 				callback(null, inst);
 			});
 		});
