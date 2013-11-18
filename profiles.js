@@ -1,97 +1,70 @@
-var fs = require('fs');
 var path = require('path');
+var fs = require('fs');
+var xtend = require('xtend');
 
 var HOME = process.env.HOME || process.env.USERPROFILE;
-var AWS_FOLDER = path.join(HOME, '.aws');
-var AWS_CONFIG = path.join(AWS_FOLDER, 'config');
-var AWS_CACHE = path.join(AWS_FOLDER, 'cache.json');
-var TTL = 24 * 3600 * 1000;
 
-try {
-	fs.mkdirSync(AWS_FOLDER);
-} catch (err) {
-	// do nothing
-}
+var AWS_CONFIG = path.join(HOME, '.aws', 'config');
+var AWS_PROFILES = fs.existsSync(AWS_CONFIG) ? fs.readFileSync(AWS_CONFIG, 'utf-8') : '';
 
-var config = '';
-try {
-	config = fs.readFileSync(AWS_CONFIG, 'utf-8').trim();
-} catch (err) {
-	// do nothing
-}
+var KIRBY_FOLDER = path.join(HOME, '.kirby');
+var KIRBY_CACHE = path.join(KIRBY_FOLDER, 'cache.json');
+var KIRBY_PROFILES = path.join(KIRBY_FOLDER, 'profiles.json');
 
-var cache = {};
-try {
-	cache = require(AWS_CACHE);
-} catch (err) {
-	// do nothing
-}
+if (!fs.existsSync(KIRBY_FOLDER)) fs.mkdirSync(KIRBY_FOLDER);
 
-var profiles = config.split(/\[(?:profile )?/)
+AWS_PROFILES = AWS_PROFILES.match(/\[(?:profile )?.+\]([^\[]+)/gm)
 	.map(function(profile) {
-		profile = profile.trim();
-		if (!profile) return null;
-
-		var match = function(regex) {
-			return (profile.match(regex) || [])[1];
+		var match = function(pattern) {
+			return (profile.match(pattern) || [])[1];
 		};
 
-		var result = {
-			name: match(/(^.+)]/),
-			access: match(/aws_access_key_id\s*=\s*(.+)/),
-			secret: match(/aws_secret_access_key\s*=\s+(.+)/),
-			region: match(/region\s*=\s*(.+)/)
+		return {
+			profile: match(/\[(?:profile )?(.+)\]/i),
+			key: match(/aws_access_key_id\s*=\s*(\S+)/i),
+			secret: match(/aws_secret_access_key\s*=\s*(\S+)/i),
+			region: match(/region\s*=\s*(\S+)/i)
 		};
-
-		result.cache = function(key, value) {
-			key = result.access+'.'+key;
-			var now = Date.now();
-			if (arguments.length === 1) return cache[key] && now < cache[key].mtime + TTL && cache[key].value;
-			cache[key] = {mtime:now, value:value};
-			fs.writeFileSync(AWS_CACHE, JSON.stringify(cache, null, '  '));
-			return value;
-		};
-
-		return result;
 	})
-	.filter(function(profile) {
-		return profile;
-	});
+	.reduce(function(result, profile) {
+		result[profile.profile] = profile;
+		return result;
+	}, {});
 
-exports.names = function() {
-	return profiles.map(function(profile) {
-		return profile.name;
-	});
-};
+var profiles = fs.existsSync(KIRBY_PROFILES) ? require(KIRBY_PROFILES) : {};
+var cache = fs.existsSync(KIRBY_CACHE) ? require(KIRBY_CACHE) : {};
 
-exports.save = function(profile) {
-	var format = function(profile) {
-		var str = ''+
-			(profile.name === 'default' ? '[default]\n' : '[profile '+profile.name+']\n') +
-			'aws_access_key_id = '+profile.access+'\n'+
-			'aws_secret_access_key = '+profile.secret+'\n'+
-			'region = '+profile.region+'\n\n';
+exports.get = function(profile, opts) {
+	if (profile && typeof profile !== 'string') return exports.get(profile.profile, profile);
+	if (!profile) profile = 'default';
 
-		return str;
+	opts = xtend(AWS_PROFILES[profile], profiles[profile], opts || {});
+	opts.profile = opts.profile || 'default';
+
+	opts.cache = function(name, value) {
+		key = profile+'.'+key;
+		var now = Date.now();
+		if (arguments.length === 1) return cache[key] && now < cache[key].mtime + TTL && cache[key].value;
+		cache[key] = {mtime:now, value:value};
+		fs.writeFileSync(KIRBY_CACHE, JSON.stringify(cache, null, '  '));
+		return value;
 	};
 
-	var i = -1;
-	profiles.some(function(old, index) {
-		if (old.name !== profile.name) return;
-		i = index;
-		return true;
-	});
-
-	if (i === -1) profiles.push(profile);
-	else profiles[i] = profile;
-
-	fs.writeFileSync(AWS_CONFIG, profiles.map(format).join(''));
-	return exports.get(profile.name);
+	return opts;
 };
 
-exports.get = function(name) {
-	if (!name) name = 'default';
-	return profiles.reduce(function(result, profile) {
-		return result || (profile.name === name && profile);
-	}, null);
+exports.save = function(opts) {
+	opts.profile = opts.profile || 'default';
+	profiles[opts.profile] = opts;
+
+	Object.keys(opts).forEach(function(key) {
+		if (opts[key] === null || opts[key] === false) delete opts[key];
+	});
+
+	fs.writeFileSync(KIRBY_PROFILES, JSON.stringify(profiles, null, '  '));
+	return exports.get(opts);
+};
+
+exports.names = function() {
+	return Object.keys(xtend(AWS_PROFILES, profiles));
 };

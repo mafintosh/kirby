@@ -6,6 +6,7 @@ var fs = require('fs');
 var profiles = require('./profiles');
 
 var HOME = process.env.HOME || process.env.USERPROFILE;
+var USERS = ['ubuntu', 'ec2-user', 'root'];
 
 var REGIONS = [
 	'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'eu-west-1', 'sa-east-1', 'us-east-1', 'us-west-1', 'us-west-2'
@@ -22,12 +23,8 @@ var USERS = [
 
 var noop = function() {};
 
-var profile = function(opts) {
-	return profiles.get(opts.profile);
-};
-
 var kirby = function(opts) {
-	return require('./index')(profile(opts));
+	return require('./index')(opts);
 };
 
 var error = function(err) {
@@ -64,7 +61,7 @@ var output = function(list, color) {
 };
 
 var instanceProperty = function(name, opts, callback) {
-	if (profile(opts).cache(name)) return callback(null, profile(opts).cache(name));
+	if (profiles.get(opts).cache(name)) return callback(null, profiles.get(opts).cache(name));
 	kirby(opts).instances(function(err, list) {
 		if (err) return callback(err);
 
@@ -73,7 +70,7 @@ var instanceProperty = function(name, opts, callback) {
 			uniq[instance[name]] = true;
 		});
 
-		callback(null, profile(opts).cache(name, Object.keys(uniq)));
+		callback(null, profiles.get(opts).cache(name, Object.keys(uniq)));
 	});
 };
 
@@ -85,36 +82,84 @@ var profileNames = function(callback) {
 	callback(null, profiles.names());
 };
 
+var knownImages = function(opts, callback) {
+	var prof = profiles.get(opts);
+
+	if (!prof) return callback();
+	if (prof.cache('images')) return callback(null, prof.cache('images'));
+
+	var request = require('request');
+	request('http://cloud-images.ubuntu.com/locator/ec2/releasesTable', function(err, response) {
+		if (err) return callback(err);
+
+		var body = JSON.parse(response.body.replace(/,\s+\]/, ']'));
+		var images = {};
+
+		body.aaData.forEach(function(ami) {
+			if (ami[2] === 'Devel' || ami[2].indexOf(' EOL') > -1 || ami[0] !== prof.region) return;
+			images['ubuntu-'+ami.slice(2, 5).join('-').replace(' LTS', '')] = ami[6].match(/>(.*)</)[1];
+		});
+
+		callback(null, prof.cache('images', images));
+	});
+};
+
+var complete = function(key) {
+	return function(word, opts, callback) {
+		if (profiles.get(opts).cache('description')) return callback(null, profiles.get(opts).cache('description')[key]);
+		kirby(opts).describe(function(err, desc) {
+			if (err) return callback(err);
+			profiles.get(opts).cache('description', desc);
+			callback(null, desc[key]);
+		});
+	};
+};
+
+var completeImages = function(word, opts, callback) {
+	knownImages(opts, function(err, images) {
+		if (err) return callback(err);
+		callback(null, Object.keys(images));
+	});
+};
+
 tab('*')
 	('--profile', '-p', profileNames);
 
 tab('profile')(profileNames)
 	('--access', '-a')
 	('--secret', '-s')
-	('--default', '-d')
-	('--region', REGIONS)
+	('--region', '-r', REGIONS)
+	('--force', '-f')
 	(function(name, opts) {
-		var old = profiles.get(name || opts.profile) || {};
+		opts = profiles.get(name || opts.profile || 'default', opts);
+
 		var profile = {};
+		profile.profile = opts.profile;
+		profile.region = opts.region;
+		profile.access = opts.access;
+		profile.secret = opts.secret;
 
-		profile.name = opts.default ? 'default' : old.name || name || opts.profile || 'default';
-		profile.access = opts.access || old.access;
-		profile.secret = opts.secret || old.secret;
-		profile.region = opts.region || old.region;
-
-		if (!profile.region || !profile.access || !profile.secret) {
+		if (!opts.force && (!profile.region || !profile.key || !profile.secret)) {
 			return error('you need to specify\n--access [access-key]\n--secret [secret-key]\n--region [region]');
 		}
 
-		require('./index')(profile).describe(function(err, description) {
-			if (err) return error('profile could not be authenticated');
+		var onvalidated = function() {
 			profile = profiles.save(profile);
 			output(profile);
+		};
+
+		if (opts.force) return onvalidated();
+
+		require('./index')(profile).describe(function(err, description) {
+			if (err) return error('profile could not be authenticated');
+			onvalidated();
 		});
 	});
 
 tab('script')(names)
 	(function(name, opts) {
+		opts = profiles.get(opts);
+
 		kirby(opts).script(name, function(err, script) {
 			if (err) return callback(err);
 			if (!script) return error('no script available');
@@ -126,6 +171,8 @@ tab('list')(names)
 	('--running', '-r')
 	('--one')
 	(function(name, opts) {
+		opts = profiles.get(opts);
+
 		kirby(opts).instances(name, opts, function(err, instances) {
 			if (err) return error(err);
 			output(opts.one ? instances.shift() : instances);
@@ -134,6 +181,8 @@ tab('list')(names)
 
 tab('hostnames')(names)
 	(function(name, opts) {
+		opts = profiles.get(opts);
+
 		kirby(opts).hostnames(name, function(err, list) {
 			if (err) return error(err);
 			output(list, false);
@@ -158,18 +207,19 @@ var script = function(val, def, callback) {
 };
 
 tab('exec')(names)
-	('--user', '-u', ['ubuntu', 'ec2-user', 'root'])
+	('--user', '-u', USERS)
 	('--one')
 	('--command', '-c')
 	('--key', '-k', '-i', '@file')
 	('--script', '-s', '@file')
 	(function(name, opts) {
+		opts = profile.get(opts);
+
 		var key = opts.key || path.join(HOME, '.ssh', 'id_rsa');
 		if (fs.existsSync(key)) opts.key = fs.readFileSync(key);
 		else error('key file does not exist');
 
 		var proc = kirby(opts).exec(name, opts);
-
 		proc.on('error', error);
 		proc.pipe(process.stdout);
 
@@ -189,49 +239,9 @@ tab('exec')(names)
 		process.stdin.pipe(proc);
 	});
 
-var knownImages = function(opts, callback) {
-	var prof = profile(opts);
-
-	if (!prof) return callback();
-	if (prof.cache('images')) return callback(null, prof.cache('images'));
-
-	var request = require('request');
-	request('http://cloud-images.ubuntu.com/locator/ec2/releasesTable', function(err, response) {
-		if (err) return callback(err);
-
-		var body = JSON.parse(response.body.replace(/,\s+\]/, ']'));
-		var images = {};
-
-		body.aaData.forEach(function(ami) {
-			if (ami[2] === 'Devel' || ami[2].indexOf(' EOL') > -1 || ami[0] !== prof.region) return;
-			images['ubuntu-'+ami.slice(2, 5).join('-').replace(' LTS', '')] = ami[6].match(/>(.*)</)[1];
-		});
-
-		callback(null, prof.cache('images', images));
-	});
-};
-
-var complete = function(key) {
-	return function(word, opts, callback) {
-		if (profile(opts).cache('description')) return callback(null, profile(opts).cache('description')[key]);
-		kirby(opts).describe(function(err, desc) {
-			if (err) return callback(err);
-			profile(opts).cache('description', desc);
-			callback(null, desc[key]);
-		});
-	};
-};
-
-var completeImages = function(word, opts, callback) {
-	knownImages(opts, function(err, images) {
-		if (err) return callback(err);
-		callback(null, Object.keys(images));
-	});
-};
-
 var clearCache = function(opts) {
-	profile(opts).cache('name', null);
-	profile(opts).cache('id', null);
+	opts.cache('name', null);
+	opts.cache('id', null);
 };
 
 tab('launch')(names)
@@ -247,6 +257,8 @@ tab('launch')(names)
 	('--defaults', '-d')
 	('--no-defaults')
 	(function(name, opts) {
+		opts = profile.get(opts);
+
 		var ready = function() {
 			knownImages(opts, function(err, images) {
 				if (err) return error(err);
@@ -275,6 +287,8 @@ tab('launch')(names)
 
 tab('terminate')(names)
 	(function(name, opts) {
+		opts = profile.get(opts);
+
 		kirby(opts).terminate(name, function(err, inst) {
 			if (err) return error(err);
 			clearCache(opts);
