@@ -8,6 +8,11 @@ var profiles = require('./profiles');
 var HOME = process.env.HOME || process.env.USERPROFILE;
 var USERS = ['ubuntu', 'ec2-user', 'root'];
 
+var SELECTIONS = [
+	'instance-id', 'name', 'load-balancer', 'public-dns', 'instance-type', 'security-group', 'iam-role',
+	'launch-time', 'instance-state', 'availability-zone', 'key-name', 'ami'
+];
+
 var REGIONS = [
 	'ap-northeast-1', 'ap-southeast-1', 'ap-southeast-2', 'eu-west-1', 'sa-east-1', 'us-east-1', 'us-west-1', 'us-west-2'
 ];
@@ -22,6 +27,16 @@ var USERS = [
 ];
 
 var noop = function() {};
+
+var camelize = function(prop) {
+	return prop.replace(/-(.)/, function(_, ch) {
+		return ch.toUpperCase();
+	});
+};
+
+var uncamelize = function(prop) {
+	return prop.replace(/([A-Z])/g, '-$1').toLowerCase();
+};
 
 var kirby = function(opts) {
 	return require('./index')({
@@ -50,12 +65,13 @@ var output = function(list, color) {
 			if (value === undefined) value = null;
 			if (value && value.toGMTString) value = value.toGMTString();
 
-			result[key.replace(/([A-Z])/g, '-$1').toLowerCase()] = value;
+			result[uncamelize(key)] = value;
 			return result;
 		}, {});
 	};
 
 	var print = function(result) {
+		if (color === false && !Array.isArray(result)) return console.log(result);
 		if (color === false) return result.length && console.log(result.join('\n'));
 		console.log(require('prettyjson').render(result));
 	};
@@ -135,13 +151,43 @@ tab('script')(names)
 
 tab('list')(names)
 	('--running', '-r')
-	('--one')
+	('--one', '-1')
+	('--select', '-s', SELECTIONS)
 	(function(name, opts) {
 		opts = profiles.defaults(opts);
 
 		kirby(opts).instances(name, opts, function(err, instances) {
 			if (err) return error(err);
-			output(opts.one ? instances.shift() : instances);
+
+			var uniq = function() {
+				var visited = {};
+				return function(prop) {
+					if (!prop || visited[prop]) return false;
+					return visited[prop] = true;
+				};
+			};
+
+			var selects = opts.select ? [].concat(opts.select).map(camelize) : [];
+
+			if (selects.length === 1) {
+				instances = instances
+					.map(function(inst) {
+						inst = inst[selects[0]];
+						return inst && inst.toGMTString ? inst.toGMTString() : inst;
+					})
+					.filter(uniq());
+			}
+
+			if (selects.length > 1) {
+				instances = instances.map(function(inst) {
+					return selects.reduce(function(result, key) {
+						result[key] = inst[key];
+						return result;
+					}, {});
+				});
+			}
+
+			output(opts.one ? instances.shift() : instances, selects.length !== 1);
 		});
 	});
 
@@ -272,13 +318,17 @@ tab('launch')(names)
 				if (err) return error(err);
 
 				var ami = images[opts.ami] || opts.ami;
+				var set = function(prop) {
+					if (opts[prop] === undefined) return;
+					opts[camelize(prop)] = opts[prop];
+				};
 
 				if (ami) opts.ami = ami;
-				if (opts['key-name']) opts.keyName = opts['key-name'];
-				if (opts['availability-zone']) opts.availabilityZone = opts['availability-zone'];
-				if (opts['load-balancer']) opts.loadBalancer = opts['load-balancer'];
-				if (opts['security-group']) opts.securityGroup = opts['security-group'];
-				if (opts['iam-role']) opts.iamRole = opts['iam-role'];
+				set('key-name');
+				set('availability-zone');
+				set('load-balancer');
+				set('security-group');
+				set('iam-role');
 
 				kirby(opts).launch(name, opts, function(err, instance) {
 					if (err) return error(err);
