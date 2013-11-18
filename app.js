@@ -211,6 +211,7 @@ var script = function(val, def, callback) {
 tab('exec')(names)
 	('--user', '-u', USERS)
 	('--one')
+	('--parallel')
 	('--command', '-c')
 	('--key', '-k', '-i', '@file')
 	('--script', '-s', '@file')

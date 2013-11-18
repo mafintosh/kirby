@@ -212,6 +212,22 @@ var kirby = function(config) {
 		instanceToLoadBalancer(wait());
 	};
 
+	var describeHostnames = function(filter, callback) {
+		that.instances(filter, function(err, instances) {
+			if (err) return callback(err);
+
+			var hostnames = instances
+				.map(function(inst) {
+					return inst.instanceState === 'running' && inst.publicDns;
+				})
+				.filter(function(hostname) {
+					return hostname;
+				});
+
+			callback(null, hostnames);
+		});
+	};
+
 	that.exec = function(filter, opts) {
 		if (typeof filter === 'object' && filter) return that.exec(null, filter);
 		if (!opts) opts = {};
@@ -229,7 +245,7 @@ var kirby = function(config) {
 		duplex.on('finish', function() {
 			buffers = Buffer.concat(buffers).toString();
 
-			that.hostnames(filter, function(err, hostnames) {
+			describeHostnames(filter, function(err, hostnames) {
 				if (err) return duplex.emit('error', err);
 
 				var connects = hostnames.map(function(hostname) {
@@ -259,12 +275,7 @@ var kirby = function(config) {
 					fn();
 				};
 
-				var loop = function() {
-					var connect = connects.shift();
-					if (!connect) return duplex.push(null);
-
-					if (opts.pool !== false) connects.slice(0, 3).forEach(call); // preheat
-
+				var exec = function(connect, callback) {
 					connect(function(err, c) {
 						if (err) return duplex.emit('error', err);
 
@@ -281,13 +292,28 @@ var kirby = function(config) {
 
 							stream.on('exit', function() {
 								c.end();
-								loop();
+								if (callback) callback();
 							});
 						});
 					});
 				};
 
-				loop();
+				var loop = function() {
+					var connect = connects.shift();
+					if (!connect) return duplex.push(null);
+					if (opts.pool !== false) connects.slice(0, 3).forEach(call); // preheat
+					exec(connect, loop);
+				};
+
+				if (!opts.parallel) return loop();
+
+				var wait = parallel(function() {
+					duplex.push(null);
+				});
+
+				connects.forEach(function(connect) {
+					exec(connect, wait);
+				});
 			});
 		});
 
