@@ -174,7 +174,7 @@ var kirby = function(config) {
 						instanceState: inst.State.Name,
 						availabilityZone: inst.Placement.AvailabilityZone,
 						keyName: inst.KeyName,
-						ami: inst.ImageId
+						amiId: inst.ImageId
 					}
 				})
 				.sort(function(a, b) {
@@ -362,12 +362,12 @@ var kirby = function(config) {
 		};
 
 		var launch = function() {
-			if (!opts.ami) return callback(new Error('ami is required'));
+			if (!opts.amiId) return callback(new Error('ami is required'));
 
 			var name = opts.name || filter;
 			var conf = {};
 
-			conf.ImageId = opts.ami;
+			conf.ImageId = opts.amiId;
 			conf.MinCount = conf.MaxCount = opts.count || 1;
 
 			ensureZone(function(err) {

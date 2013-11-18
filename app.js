@@ -296,7 +296,7 @@ tab('launch')(names)
 	('--iam-role', '-r', complete('iamRoles'))
 	('--load-balancer', '-l', complete('loadBalancers'))
 	('--script', '-s', '@file')
-	('--ami', '-i', completeImages)
+	('--ami-id', '-i', completeImages)
 	('--wait', '-w')
 	('--defaults', '-d')
 	('--no-defaults')
@@ -307,13 +307,13 @@ tab('launch')(names)
 			knownImages(opts, function(err, images) {
 				if (err) return error(err);
 
-				var ami = images[opts.ami] || opts.ami;
+				var ami = images[opts['ami-id']] || opts['ami-id'];
 				var set = function(prop) {
 					if (opts[prop] === undefined) return;
 					opts[camelize(prop)] = opts[prop];
 				};
 
-				if (ami) opts.ami = ami;
+				if (ami) opts.amiId = ami;
 				set('key-name');
 				set('availability-zone');
 				set('load-balancer');
