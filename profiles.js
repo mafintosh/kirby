@@ -3,6 +3,7 @@ var fs = require('fs');
 var xtend = require('xtend');
 
 var HOME = process.env.HOME || process.env.USERPROFILE;
+var TTL = 24 * 3600 * 1000;
 
 var AWS_CONFIG = path.join(HOME, '.aws', 'config');
 var AWS_PROFILES = fs.existsSync(AWS_CONFIG) ? fs.readFileSync(AWS_CONFIG, 'utf-8') : '';
@@ -21,8 +22,8 @@ AWS_PROFILES = AWS_PROFILES.match(/\[(?:profile )?.+\]([^\[]+)/gm)
 
 		return {
 			profile: match(/\[(?:profile )?(.+)\]/i),
-			key: match(/aws_access_key_id\s*=\s*(\S+)/i),
-			secret: match(/aws_secret_access_key\s*=\s*(\S+)/i),
+			'aws-access-key': match(/aws_access_key_id\s*=\s*(\S+)/i),
+			'aws-secret-key': match(/aws_secret_access_key\s*=\s*(\S+)/i),
 			region: match(/region\s*=\s*(\S+)/i)
 		};
 	})
@@ -34,14 +35,14 @@ AWS_PROFILES = AWS_PROFILES.match(/\[(?:profile )?.+\]([^\[]+)/gm)
 var profiles = fs.existsSync(KIRBY_PROFILES) ? require(KIRBY_PROFILES) : {};
 var cache = fs.existsSync(KIRBY_CACHE) ? require(KIRBY_CACHE) : {};
 
-exports.get = function(profile, opts) {
-	if (profile && typeof profile !== 'string') return exports.get(profile.profile, profile);
+exports.defaults = function(profile, opts) {
+	if (profile && typeof profile !== 'string') return exports.defaults(profile.profile, profile);
 	if (!profile) profile = 'default';
 
 	opts = xtend(AWS_PROFILES[profile], profiles[profile], opts || {});
 	opts.profile = opts.profile || 'default';
 
-	opts.cache = function(name, value) {
+	opts.cache = function(key, value) {
 		key = profile+'.'+key;
 		var now = Date.now();
 		if (arguments.length === 1) return cache[key] && now < cache[key].mtime + TTL && cache[key].value;
@@ -62,7 +63,7 @@ exports.save = function(opts) {
 	});
 
 	fs.writeFileSync(KIRBY_PROFILES, JSON.stringify(profiles, null, '  '));
-	return exports.get(opts);
+	return exports.defaults(opts);
 };
 
 exports.names = function() {
