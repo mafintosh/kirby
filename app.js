@@ -191,16 +191,6 @@ tab('list')(names)
 		});
 	});
 
-tab('hostnames')(names)
-	(function(name, opts) {
-		opts = profiles.defaults(opts);
-
-		kirby(opts).hostnames(name, function(err, list) {
-			if (err) return error(err);
-			output(list, false);
-		});
-	});
-
 var script = function(val, def, callback) {
 	if (val === true) {
 		var tmp = path.join(require('os').tmpDir(), 'script.sh');

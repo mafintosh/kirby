@@ -212,24 +212,6 @@ var kirby = function(config) {
 		instanceToLoadBalancer(wait());
 	};
 
-	that.hostnames = function(filter, callback) {
-		if (typeof filter === 'function') return that.hostnames(null, filter);
-
-		that.instances(filter, function(err, instances) {
-			if (err) return callback(err);
-
-			var hostnames = instances
-				.map(function(inst) {
-					return inst.state === 'running' && inst.publicDns;
-				})
-				.filter(function(hostname) {
-					return hostname;
-				});
-
-			callback(null, hostnames);
-		});
-	};
-
 	that.exec = function(filter, opts) {
 		if (typeof filter === 'object' && filter) return that.exec(null, filter);
 		if (!opts) opts = {};

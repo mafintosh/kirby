@@ -24,8 +24,6 @@ The available commands are
 
   terminate   terminate a running instance with the given name or instance id
 
-  hostnames   list the hostnames of all instances with the given name
-
   exec        execute a command on all instances with the given name
               expects a script from stdin or --command to be used
                 --command,-c [commands] to specify the command to execute inline
