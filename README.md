@@ -25,7 +25,7 @@ The available commands are
   launch      launch a new instance with the given name
               the defaults for the options below are configured based
               on instances with the same name
-                --ami,-i [image] to set the ami
+                --ami-id,-i [image] to set the ami
                 --key-name,-k [key-pair-name] to set the key-pair used for ssh
                 --instance-type,-t [instance-type] to set the instance type
                 --security-group,-g [security-group-name] to set the security group
@@ -49,10 +49,12 @@ The available commands are
                 --user,-u [username] to set the user. Defaults to ubuntu
                 --key,-k [path] to specify a ssh key to use for auth
                 --one to only execute on the latest launched instance
+                --parallel to execute the script in parallel across instances
 
   list        list all instances with the given name
                 --one to only show the latest launched instance
                 --running to only show running instances
+                --select,-s [name-of-property] to only show a single property
 
   script      show the latest used launch script for the given name
 
