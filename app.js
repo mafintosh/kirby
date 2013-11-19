@@ -149,6 +149,44 @@ tab('script')(names)
 		});
 	});
 
+tab('login')(names)
+	('--key', '-k', '-i', '@file')
+	('--user', '-u', USERS)
+	(function(name, opts) {
+		opts = profiles.defaults(opts);
+
+		var inquirer = require('inquirer');
+		var proc = require('child_process');
+
+		var login = function(host) {
+			var args = opts.key ? ['-i', opts.key] : [];
+			var user = opts.user || 'ubuntu';
+			proc.spawn('ssh', args.concat(user+'@'+host), {stdio:'inherit'});
+		};
+
+		kirby(opts).instances(name, {running:true}, function(err, instances) {
+			if (err) return error(err);
+			if (!instances.length) return error('no instances found');
+			if (instances.length === 1) return login(instances[0].publicDns);
+
+			var padding = instances.reduce(function(max, inst) {
+				return inst.name.length > max.length ? inst.name.replace(/./g, ' ') : max;
+			}, '');
+
+			inquirer.prompt({
+				name: 'login',
+				type: 'list',
+				message: 'Select an instance',
+				choices: instances.map(function(inst) {
+					return inst.name+padding.slice(inst.name.length)+'  '+inst.instanceId+'  '+inst.publicDns;
+				}).sort()
+			}, function(opts) {
+				var host = opts.login.split(' ').pop();
+				login(host);
+			})
+		});
+	})
+
 tab('list')(names)
 	('--running', '-r')
 	('--one', '-1')
