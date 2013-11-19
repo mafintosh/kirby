@@ -54,7 +54,7 @@ The available commands are
                 --one to only show the latest launched instance
                 --running to only show running instances
 
-  script      script the latest used launch script for the given name
+  script      show the latest used launch script for the given name
 
   profile     list and manage profiles. use kirby profile [new-name] to add a new one
               per default the profile name default is used and all profiles are shared
