@@ -37,6 +37,7 @@ The available commands are
               will prompt for the instance to login to if there are more than one.
                 --key,-k [path-to-private-key] to specify a private key to use for auth
                 --user,-u [username] to set the user. Defaults to ubuntu
+                --one to login to the latest launched instance
 
   list        list all instances with the given name
                 --one to only show the latest launched instance

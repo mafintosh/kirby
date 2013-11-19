@@ -152,6 +152,7 @@ tab('script')(names)
 tab('login')(names)
 	('--key', '-k', '-i', '@file')
 	('--user', '-u', USERS)
+	('--one', '-1')
 	(function(name, opts) {
 		opts = profiles.defaults(opts);
 
@@ -167,7 +168,7 @@ tab('login')(names)
 		kirby(opts).instances(name, {running:true}, function(err, instances) {
 			if (err) return error(err);
 			if (!instances.length) return error('no instances found');
-			if (instances.length === 1) return login(instances[0].publicDns);
+			if (instances.length === 1 || opts.one) return login(instances[0].publicDns);
 
 			var padding = instances.reduce(function(max, inst) {
 				return inst.name.length > max.length ? inst.name.replace(/./g, ' ') : max;
