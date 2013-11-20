@@ -18,11 +18,11 @@
     "aws-sdk": "~1.12.0",
     "tabalot": "~0.2.7",
     "thunky": "~0.1.0",
-    "ssh2": "~0.2.13",
     "stream-wrapper": "~0.1.2",
     "xtend": "~2.1.1",
     "prettyjson": "~0.9.0",
     "request": "~2.27.0",
-    "inquirer": "~0.3.5"
+    "inquirer": "~0.3.5",
+    "ssh-exec": "~0.1.3"
   }
 }
