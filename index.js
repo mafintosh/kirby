@@ -234,7 +234,7 @@ var kirby = function(config) {
 		if (typeof filter === 'object' && filter) return that.exec(null, filter);
 		if (!opts) opts = {};
 
-		var Connection = require('ssh2');
+		var exec = require('ssh-exec');
 		var stream = require('stream-wrapper');
 		var thunky = require('thunky');
 
@@ -250,62 +250,30 @@ var kirby = function(config) {
 			describeHostnames(filter, function(err, hostnames) {
 				if (err) return duplex.emit('error', err);
 
-				var connects = hostnames.map(function(hostname) {
-					var connect = thunky(function(callback) {
-						var c = new Connection();
+				if (opts.one) hostnames = hostnames.slice(0, 1);
 
-						c.on('error', callback);
-						c.on('ready', function() {
-							c.removeListener('error', callback);
-							callback(null, c);
-						});
+				var run = function(host, callback) {
+					var output = exec(buffers, {host:host, user:opts.user || 'ubuntu', key:opts.key});
 
-						c.connect({
-							username: opts.user || 'ubuntu',
-							host: hostname,
-							port: opts.port || 22,
-							privateKey: opts.key
-						});
+					output.on('exit', callback.bind(null, null));
+
+					output.on('error', function(err) {
+						duplex.emit('error', err);
 					});
 
-					return connect;
-				});
-
-				if (opts.one) connects = connects.slice(0, 1);
+					output.on('data', function(data) {
+						duplex.push(data);
+					});
+				};
 
 				var call = function(fn) {
 					fn();
 				};
 
-				var exec = function(connect, callback) {
-					console.log('exec now');
-					connect(function(err, c) {
-						if (err) return duplex.emit('error', err);
-
-						c.on('error', function(err) {
-							duplex.emit('error', err);
-						});
-						console.log('really execing now');
-						c.exec(buffers, function(err, stream) {
-							if (err) return duplex.emit('error', err);
-
-							stream.on('data', function(data) {
-								duplex.push(data);
-							});
-
-							stream.on('exit', function() {
-								c.end();
-								if (callback) callback();
-							});
-						});
-					});
-				};
-
 				var loop = function() {
-					var connect = connects.shift();
-					if (!connect) return duplex.push(null);
-					if (opts.pool !== false) connects.slice(0, 3).forEach(call); // preheat
-					exec(connect, loop);
+					var host = hostnames.shift();
+					if (!host) return duplex.push(null);
+					run(host, loop);
 				};
 
 				if (!opts.parallel) return loop();
@@ -314,8 +282,8 @@ var kirby = function(config) {
 					duplex.push(null);
 				});
 
-				connects.forEach(function(connect) {
-					exec(connect, wait);
+				hostnames.forEach(function(host) {
+					run(host, wait);
 				});
 			});
 		});
