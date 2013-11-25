@@ -261,24 +261,24 @@ tab('exec')(names)
 		if (fs.existsSync(key)) opts.key = fs.readFileSync(key);
 		else error('key file does not exist');
 
-		var proc = kirby(opts).exec(name, opts);
-		proc.on('error', error);
-		proc.pipe(process.stdout);
+		var oncommand = function(cmd) {
+			var proc = kirby(opts).exec(name, cmd, opts);
+			proc.on('error', error);
+			proc.pipe(process.stdout);
+		};
 
-		if (opts.command) return proc.end(opts.command);
+		if (opts.command && opts.command !== true) return oncommand(opts.command);
 
 		if (opts.script) {
 			var def = ''+
 				'#!/bin/bash\n'+
 				'# This script in run on the instances\n';
 
-			script(opts.script, def, function(val) {
-				proc.end(val);
-			});
+			script(opts.script, def, oncommand);
 			return;
 		}
 
-		process.stdin.pipe(proc);
+		error('--script [file] or --command [command] is required')
 	});
 
 var knownImages = function(opts, callback) {

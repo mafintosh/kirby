@@ -230,7 +230,7 @@ var kirby = function(config) {
 		});
 	};
 
-	that.exec = function(filter, opts) {
+	that.exec = function(filter, cmd, opts) {
 		if (typeof filter === 'object' && filter) return that.exec(null, filter);
 		if (!opts) opts = {};
 
@@ -238,57 +238,53 @@ var kirby = function(config) {
 		var stream = require('stream-wrapper');
 		var thunky = require('thunky');
 
-		var buffers = [];
-		var duplex = stream.duplex(noop, function(buffer, enc, callback) {
-			buffers.push(buffer);
-			callback();
-		});
+		var result = stream.passThrough();
+		result.setMaxListeners(0);
 
-		duplex.on('finish', function() {
-			buffers = Buffer.concat(buffers).toString();
+		describeHostnames(filter, function(err, hostnames) {
+			if (err) return result.emit('error', err);
+			if (opts.one) hostnames = hostnames.slice(0, 1);
 
-			describeHostnames(filter, function(err, hostnames) {
-				if (err) return duplex.emit('error', err);
+			var run = function(host, callback) {
+				var output = exec(cmd, {host:host, user:opts.user || 'ubuntu', key:opts.key});
 
-				if (opts.one) hostnames = hostnames.slice(0, 1);
-
-				var run = function(host, callback) {
-					var output = exec(buffers, {host:host, user:opts.user || 'ubuntu', key:opts.key});
-
-					output.on('exit', callback.bind(null, null));
-
-					output.on('error', function(err) {
-						duplex.emit('error', err);
-					});
-
-					output.on('data', function(data) {
-						duplex.push(data);
-					});
-				};
-
-				var call = function(fn) {
-					fn();
-				};
-
-				var loop = function() {
-					var host = hostnames.shift();
-					if (!host) return duplex.push(null);
-					run(host, loop);
-				};
-
-				if (!opts.parallel) return loop();
-
-				var wait = parallel(function() {
-					duplex.push(null);
+				output.on('error', function(err) {
+					result.emit('error', err);
 				});
 
-				hostnames.forEach(function(host) {
-					run(host, wait);
+				output.on('exit', function(code) {
+					result.emit('exit', code);
 				});
+
+				output.on('end', function() {
+					callback();
+				});
+
+				output.pipe(result, {end:false});
+			};
+
+			var call = function(fn) {
+				fn();
+			};
+
+			var loop = function() {
+				var host = hostnames.shift();
+				if (!host) return result.end();
+				run(host, loop);
+			};
+
+			if (!opts.parallel) return loop();
+
+			var wait = parallel(function() {
+				result.end();
+			});
+
+			hostnames.forEach(function(host) {
+				run(host, wait());
 			});
 		});
 
-		return duplex;
+		return result;
 	};
 
 	that.script = function(filter, callback) {
