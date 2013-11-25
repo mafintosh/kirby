@@ -25,7 +25,7 @@ The available commands are
   terminate   terminate a running instance with the given name or instance id
 
   exec        execute a command on all instances with the given name
-              expects a script from stdin or --command to be used
+              expects a script from --script [file] or --command [commands] to be used
                 --command,-c [commands] to specify the command to execute inline
                 --script,-s [script] to specify a script file to run
                 --script,-s to specify the script interactively
