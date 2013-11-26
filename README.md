@@ -70,7 +70,7 @@ The available commands are
                 --region,-r [region-name] to set the used region. Defaults to us-east-1
 
 All commands accept --profile,-p [profile-name] to set the used profile to something
-other that default
+other than default
 
 Running 'kirby --help' will print this message
 ```
