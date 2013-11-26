@@ -42,7 +42,7 @@ The available commands are
   terminate   terminate a running instance with the given name or instance id
 
   exec        execute a command on all instances with the given name
-              expects a script from stdin or --command to be used
+              expects a script from --script [file] or --command [commands] to be used
                 --command,-c [commands] to specify the command to execute inline
                 --script,-s [script] to specify a script file to run
                 --script,-s to specify the script interactively
@@ -54,6 +54,7 @@ The available commands are
               will prompt for the instance to login to if there are more than one.
                 --key,-k [path-to-private-key] to specify a private key to use for auth
                 --user,-u [username] to set the user. Defaults to ubuntu
+                --one to login to the latest launched instance
 
   list        list all instances with the given name
                 --one to only show the latest launched instance
