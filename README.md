@@ -10,7 +10,20 @@ It is available through npm
 
 Kirby allows you to easily launch and list named ec2 instances.
 Key features include tab-completion and making launched instances automatically inherit
-the configuration of an instance with the same name
+the configuration of an instance with the same name.
+
+## Identifying instances
+
+In general all commands accept a name, instance-id, hostname or private hostname to
+identify an instance. If the instance name contains `+` it will be treated as an array
+of different names, i.e. name=foo+bar means that both foo and bar will match that instance.
+
+  kirby list i-134245        # matches instance-id=i-134245
+  kirby list ec2-42-54-25... # matches hostname=ec2-42-54-25...
+  kirby list ip-24-24-13...  # matches private-hostname=ip-24-24-13...
+  kirby list test            # matches name=test or name=test+another-name
+
+## Help
 
 Run `kirby` to see a full list of commands and options
 
