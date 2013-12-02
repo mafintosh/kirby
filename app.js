@@ -97,7 +97,16 @@ var instanceProperty = function(name, opts, callback) {
 };
 
 var names = function(word, opts, callback) {
-	instanceProperty(word.slice(0,2) === 'i-' ? 'instanceId' : 'name', opts, callback);
+	instanceProperty(word.slice(0,2) === 'i-' ? 'instanceId' : 'name', opts, function(err, words) {
+		if (err) return callback(err);
+		if (word.indexOf('+') > -1) return callback(null, words);
+
+		words = Array.prototype.concat.apply([], words.map(function(word) {
+			return word.split(/\s*\+\s*/);
+		}));
+
+		callback(null, words);
+	});
 };
 
 var profileNames = function(callback) {
