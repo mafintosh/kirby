@@ -59,6 +59,10 @@ var kirby = function(config) {
 
 			result = result.filter(function(inst) {
 				if (inst.InstanceId === filter) return true;
+				if (inst.PublicDnsName === filter) return true;
+				if (inst.PrivateDnsName === filter) return true;
+				if (inst.PrivateDnsName === filter+'.'+config.region+'.compute.internal') return true;
+
 				return (inst.Tags || []).some(function(tag) {
 					return tag.Key === 'Name' && tag.Value === filter;
 				});
