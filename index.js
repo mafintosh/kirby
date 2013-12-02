@@ -64,7 +64,7 @@ var kirby = function(config) {
 				if (inst.PrivateDnsName === filter+'.'+config.region+'.compute.internal') return true;
 
 				return (inst.Tags || []).some(function(tag) {
-					return tag.Key === 'Name' && tag.Value === filter;
+					return tag.Key === 'Name' && (tag.Value === filter || tag.Value.split(/\s*\+\s*/).indexOf(filter) > -1);
 				});
 			});
 
