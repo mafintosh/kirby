@@ -22,8 +22,9 @@ of different names, i.e. `name=foo+bar` means that both `foo` and `bar` will mat
 kirby list i-134245        # matches instance-id=i-134245
 kirby list ec2-42-54-25... # matches hostname=ec2-42-54-25...
 kirby list ip-24-24-13...  # matches private-hostname=ip-24-24-13...
-kirby list a-name          # matches name=a-name or name=a-name+another-name
-kirby list another-name    # matches name=another-name or name=a-name+another-name
+kirby list foo             # matches name=foo or name=foo+bar
+kirby list bar             # matches name=bar or name=foo+bar
+kirby list foo+bar         # matches name=foo+bar or name=bar+foo
 ```
 
 ## Help
