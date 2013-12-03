@@ -45,7 +45,12 @@ var kirby = function(config) {
 		});
 	}
 
+	var splitName = function(name) {
+		return typeof name === 'string' ? name.split(/\s*\+\s*/) : (name || []);
+	};
+
 	var describeInstances = function(filter, callback) {
+
 		var ec2 = new AWS.EC2();
 		ec2.describeInstances(function(err, instances) {
 			if (err) return callback(err);
@@ -58,13 +63,17 @@ var kirby = function(config) {
 			if (!filter) return callback(null, result);
 
 			result = result.filter(function(inst) {
+				var names = Array.prototype.concat.apply([], (inst.Tags || []).map(function(tag) {
+					return tag.Key === 'Name' ? splitName(tag.Value) : [];
+				}));
+
 				if (inst.InstanceId === filter) return true;
 				if (inst.PublicDnsName === filter) return true;
 				if (inst.PrivateDnsName === filter) return true;
 				if (inst.PrivateDnsName === filter+'.'+config.region+'.compute.internal') return true;
 
-				return (inst.Tags || []).some(function(tag) {
-					return tag.Key === 'Name' && (tag.Value === filter || tag.Value.split(/\s*\+\s*/).indexOf(filter) > -1);
+				return splitName(filter).every(function(f) {
+					return names.indexOf(f) > -1;
 				});
 			});
 
@@ -169,7 +178,7 @@ var kirby = function(config) {
 				.map(function(inst) {
 					return {
 						instanceId: inst.InstanceId,
-						name: getName(inst),
+						name: splitName(getName(inst)).join('+'), // normalize whitespace
 						loadBalancer: loadBalancers[inst.InstanceId],
 						privateDns: inst.PrivateDnsName,
 						publicDns: inst.PublicDnsName,
@@ -181,7 +190,7 @@ var kirby = function(config) {
 						availabilityZone: inst.Placement.AvailabilityZone,
 						keyName: inst.KeyName,
 						amiId: inst.ImageId
-					}
+					};
 				})
 				.sort(function(a, b) {
 					var stateA = a.instanceState;
