@@ -97,15 +97,37 @@ var instanceProperty = function(name, opts, callback) {
 };
 
 var names = function(word, opts, callback) {
-	instanceProperty(word.slice(0,2) === 'i-' ? 'instanceId' : 'name', opts, function(err, words) {
+	if (word.slice(0,2) === 'i-') return instanceProperty('instanceId', opts, callback);
+	if (word.slice(0,4) === 'ec2-') return instanceProperty('publicDns', opts, callback);
+	if (word.slice(0,3) === 'ip-') return instanceProperty('privateDns', opts, callback);
+
+	var uniq = function(value, i, list) {
+		return list.indexOf(value) === i;
+	};
+
+	var prev = word.split('+').slice(0, -1).filter(function(part) {
+		return part;
+	});
+
+	instanceProperty('name', opts, function(err, names) {
 		if (err) return callback(err);
-		if (word.indexOf('+') > -1) return callback(null, words);
 
-		words = Array.prototype.concat.apply([], words.map(function(word) {
-			return word.split(/\s*\+\s*/);
-		}));
+		names = names
+			.map(function(word) {
+				return word ? word.split('+') : [];
+			})
+			.filter(function(words) {
+				return prev.every(function(word) {
+					return words.indexOf(word) > -1;
+				});
+			})
+			.map(function(words) {
+				return words.map(function(word) {
+					return prev.concat(word).filter(uniq).join('+');
+				});
+			});
 
-		callback(null, words);
+		callback(null, Array.prototype.concat.apply([], names));
 	});
 };
 
