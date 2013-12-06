@@ -285,6 +285,7 @@ tab('exec')(names)
 	('--command', '-c')
 	('--key', '-k', '-i', '@file')
 	('--script', '-s', '@file')
+	('--user-data')
 	(function(name, opts) {
 		opts = profiles.defaults(opts);
 
@@ -298,6 +299,7 @@ tab('exec')(names)
 			proc.pipe(process.stdout);
 		};
 
+		if (opts['user-data']) opts.command = 'curl http://169.254.169.254/latest/user-data | sudo sh';
 		if (opts.command && opts.command !== true) return oncommand(opts.command);
 
 		if (opts.script) {
