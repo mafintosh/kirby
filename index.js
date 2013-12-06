@@ -300,8 +300,8 @@ var kirby = function(config) {
 		return result;
 	};
 
-	that.script = function(filter, callback) {
-		if (typeof filter === 'function') return that.script(null, filter);
+	that.userData = function(filter, callback) {
+		if (typeof filter === 'function') return that.userData(null, filter);
 
 		that.instances(filter, function(err, instances) {
 			if (err) return callback(err);
@@ -381,7 +381,7 @@ var kirby = function(config) {
 
 				if (opts.keyName) conf.KeyName = opts.keyName;
 				if (opts.securityGroup) conf.SecurityGroups = [].concat(opts.securityGroup);
-				if (opts.script) conf.UserData = new Buffer(opts.script, 'utf-8').toString('base64');
+				if (opts.userData) conf.UserData = new Buffer(opts.userData, 'utf-8').toString('base64');
 				if (opts.instanceType) conf.InstanceType = opts.instanceType;
 				if (opts.availabilityZone) conf.Placement = {AvailabilityZone: opts.availabilityZone};
 				if (opts.iamRole) conf.IamInstanceProfile = {Name: opts.iamRole};
@@ -423,10 +423,10 @@ var kirby = function(config) {
 			delete inst.availabilityZone;
 			opts = xtend(inst, opts);
 
-			if (opts.script) return launch();
-			that.script(inst.instanceId, function(err, script) {
+			if (opts.userData) return launch();
+			that.userData(inst.instanceId, function(err, userData) {
 				if (err) return callback(err);
-				opts.script = script;
+				opts.userData = userData;
 				launch();
 			});
 

@@ -13,8 +13,9 @@ The available commands are
                 --instance-type,-t [instance-type] to set the instance type
                 --security-group,-g [security-group-name] to set the security group
                 --availability-zone,-z [zone] to specify which availabilty zone to launch in
-                --script,-s [filename] to specify a launch script
-                --script,-s to specify a launch script interactively
+                --user-data,-u [filename] to specify user-data. If user-data starts with #!
+                  aws will treat it as a launch script
+                --user-data,-u to specify user-data interactively
                 --iam-role,-r [role-name] to set a iam instance profile role
                 --load-balancer [elb-name] to register instance with elb.
                 --defaults,-d [instance-id] to set default values for options based
@@ -43,7 +44,7 @@ The available commands are
                 --one to only show the latest launched instance
                 --running to only show running instances
 
-  script      script the latest used launch script for the given name
+  user-data   show the latest used user-data for the given name
 
   profile     list and manage profiles. use kirby profile [new-name] to add a new one
               per default the profile name default is used and all profiles are shared

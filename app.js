@@ -169,14 +169,14 @@ tab('profile')(profileNames)
 		});
 	});
 
-tab('script')(names)
+tab('user-data')(names)
 	(function(name, opts) {
 		opts = profiles.defaults(opts);
 
-		kirby(opts).script(name, function(err, script) {
+		kirby(opts).userData(name, function(err, userData) {
 			if (err) return callback(err);
-			if (!script) return error('no script available');
-			console.log(script);
+			if (!userData) return error('no user-data available');
+			console.log(userData);
 		});
 	});
 
@@ -366,7 +366,7 @@ tab('launch')(names)
 	('--security-group', '-g', complete('securityGroups'))
 	('--iam-role', '-r', complete('iamRoles'))
 	('--load-balancer', '-l', complete('loadBalancers'))
-	('--script', '-s', '@file')
+	('--user-data', '-u', '@file')
 	('--ami-id', '-i', completeImages)
 	('--wait', '-w')
 	('--defaults', '-d')
@@ -385,6 +385,7 @@ tab('launch')(names)
 				};
 
 				if (ami) opts.amiId = ami;
+				set('user-data');
 				set('key-name');
 				set('availability-zone');
 				set('load-balancer');
@@ -399,15 +400,15 @@ tab('launch')(names)
 			});
 		};
 
-		if (!opts.script) return ready();
+		if (!opts['user-data']) return ready();
 
 		var def = ''+
 			'#!/bin/bash\n'+
-			'# This script is run on boot\n'+
-			'# Use "kirby script" to view other instances boot script\n';
+			'# user-data is run on instance boot\n'+
+			'# use "kirby user-data" to view other instances user-data\n';
 
-		script(opts.script, def, function(val) {
-			opts.script = val;
+		script(opts['user-data'], def, function(val) {
+			opts['user-data'] = val;
 			ready();
 		});
 	});
