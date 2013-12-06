@@ -51,7 +51,7 @@ var error = function(err) {
 	process.exit(1);
 };
 
-var help = function() {
+var help = function(opts) {
 	error(fs.readFileSync(path.join(__dirname, 'help'), 'utf-8'));
 };
 
@@ -426,6 +426,11 @@ tab('terminate')(names)
 		});
 	});
 
-tab(help);
+tab()
+	('--version', '-v')
+	(function(opts) {
+		if (opts.version) return output('v'+require('./package').version);
+		help();
+	});
 
 tab.parse() || help();

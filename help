@@ -32,6 +32,7 @@ The available commands are
                 --script,-s to specify the script interactively
                 --user,-u [username] to set the user. Defaults to ubuntu
                 --key,-k [path-to-private-key] to specify a private key to use for auth
+                --user-data to execute the instances user-data. See launch for more info
                 --one to only execute on the latest launched instance
 
   login       login to a single instance with the given name using ssh
