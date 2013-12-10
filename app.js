@@ -299,7 +299,7 @@ tab('exec')(names)
 			proc.pipe(process.stdout);
 		};
 
-		if (opts['user-data']) opts.command = 'curl http://169.254.169.254/latest/user-data | sudo sh';
+		if (opts['user-data']) opts.command = 'curl -fs http://169.254.169.254/latest/user-data > /tmp/user-data && chmod +x /tmp/user-data && sudo /tmp/user-data';
 		if (opts.command && opts.command !== true) return oncommand(opts.command);
 
 		if (opts.script) {
