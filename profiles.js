@@ -14,7 +14,7 @@ var KIRBY_PROFILES = path.join(KIRBY_FOLDER, 'profiles.json');
 
 if (!fs.existsSync(KIRBY_FOLDER)) fs.mkdirSync(KIRBY_FOLDER);
 
-AWS_PROFILES = AWS_PROFILES.match(/\[(?:profile )?.+\]([^\[]+)/gm)
+AWS_PROFILES = (AWS_PROFILES.match(/\[(?:profile )?.+\]([^\[]+)/gm) || [])
 	.map(function(profile) {
 		var match = function(pattern) {
 			return (profile.match(pattern) || [])[1];
