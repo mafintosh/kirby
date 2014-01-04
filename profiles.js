@@ -6,11 +6,13 @@ var ini = require('ini');
 var HOME = process.env.HOME || process.env.USERPROFILE;
 var TTL = 24 * 3600 * 1000;
 
-var AWS_CONFIG = path.join(HOME, '.aws', 'config');
-var KIRBY_CACHE = path.join(HOME, 'cache', 'kirby.json');
+var AWS_FOLDER = path.join(HOME, '.aws');
+var AWS_CONFIG = path.join(AWS_FOLDER, 'config');
+var CACHE_FOLDER = path.join(HOME, '.cache');
+var CACHE_KIRBY = path.join(CACHE_FOLDER, 'kirby.json');
 
 var profiles = ini.decode(fs.existsSync(AWS_CONFIG) ? fs.readFileSync(AWS_CONFIG, 'utf-8') : '');
-var cache = fs.existsSync(KIRBY_CACHE) ? require(KIRBY_CACHE) : {};
+var cache = fs.existsSync(CACHE_KIRBY) ? require(CACHE_KIRBY) : {};
 
 exports.defaults = function(profile, opts) {
 	if (profile && typeof profile !== 'string') return exports.defaults(profile.profile, profile);
@@ -33,7 +35,10 @@ exports.defaults = function(profile, opts) {
 		var now = Date.now();
 		if (arguments.length === 1) return cache[key] && now < cache[key].mtime + TTL && cache[key].value;
 		cache[key] = {mtime:now, value:value};
-		fs.writeFileSync(KIRBY_CACHE, JSON.stringify(cache, null, '  '));
+
+		if (!fs.existsSync(CACHE_FOLDER)) fs.mkdirSync(CACHE_FOLDER);
+		fs.writeFileSync(CACHE_KIRBY, JSON.stringify(cache, null, '  '));
+
 		return value;
 	};
 
@@ -51,7 +56,9 @@ exports.save = function(opts) {
 		region: opts.region
 	});
 
+	if (!fs.existsSync(AWS_FOLDER)) fs.mkdirSync(AWS_FOLDER);
 	fs.writeFileSync(AWS_CONFIG, ini.encode(profiles));
+
 	return exports.defaults(opts);
 };
 
