@@ -1,13 +1,13 @@
 Usage: kirby [command] [name-or-id?]
 
 The available commands are
-  completion  setup rich tabcompletion
-              remember to source the completion or restart your terminal after setting up
+  completion  Setup rich tabcompletion.
+              Remember to source the completion or restart your terminal after setting up.
                 --save,-s to save it to your $BASH_COMPLETION_DIR (install globally)
 
-  launch      launch a new instance with the given name
-              the defaults for the options below are configured based
-              on instances with the same name
+  launch      Launch a new instance with the given name.
+              The defaults for the options below are configured based on instances with
+              the same name.
                 --ami,-i [image] to set the ami
                 --key-name,-k [key-pair-name] to set the key-pair used for ssh
                 --instance-type,-t [instance-type] to set the instance type
@@ -23,10 +23,10 @@ The available commands are
                   name will be used
                 --no-defaults to disable defaults selection
 
-  terminate   terminate a running instance with the given name or instance id
+  terminate   Terminate a running instance with the given name or instance id.
 
-  exec        execute a command on all instances with the given name
-              expects a script from --script [file] or --command [commands] to be used
+  exec        Execute a command on all instances with the given name.
+              Expects a script from --script [file] or --command [commands] to be used.
                 --command,-c [commands] to specify the command to execute inline
                 --script,-s [script] to specify a script file to run
                 --script,-s to specify the script interactively
@@ -35,27 +35,27 @@ The available commands are
                 --user-data to execute the instances user-data. See launch for more info
                 --one to only execute on the latest launched instance
 
-  login       login to a single instance with the given name using ssh
-              will prompt for the instance to login to if there are more than one.
+  login       Login to a single instance with the given name using ssh.
+              Will prompt for the instance to login to if there are more than one.
                 --key,-k [path-to-private-key] to specify a private key to use for auth
                 --user,-u [username] to set the user. Defaults to ubuntu
                 --one to login to the latest launched instance
 
-  list        list all instances with the given name
+  list        List all instances with the given name.
                 --one to only show the latest launched instance
                 --running to only show running instances
 
-  user-data   show the latest used user-data for the given name
+  user-data   Show the latest used user-data for the given name.
 
-  profile     list and manage profiles. use kirby profile [new-name] to add a new one
-              per default the profile name default is used and all profiles are shared
-              with the aws cli tools
+  profile     List and manage profiles. Use kirby profile [new-name] to add a new one.
+              Per default the profile name default is used and all profiles are shared with
+              the aws cli tools.
                 --aws-access-key,-a [access-key] to specify the AWS access key to use
                 --aws-secret-key,-s [secret-key] to specify the AWS secret key to use
                 --region,-r [region-name] to set the used AWS region.
                 --iam-role to specify that this profile is using an iam role
 
 All commands accept --profile,-p [profile-name] to set the used profile to something
-other than default
+other than default.
 
-Running 'kirby --help' will print this message
+Running 'kirby --help' will print this message.
