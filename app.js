@@ -7,6 +7,7 @@ var profiles = require('./profiles');
 
 var HOME = process.env.HOME || process.env.USERPROFILE;
 var USERS = ['ubuntu', 'ec2-user', 'root'];
+var INSTANCE_DOCUMENT = 'http://169.254.169.254/latest/dynamic/instance-identity/document';
 
 var SELECTIONS = [
 	'instance-id', 'name', 'load-balancer', 'public-dns', 'instance-type', 'security-group', 'iam-role',
@@ -143,29 +144,53 @@ tab('profile')(profileNames)
 	('--aws-secret-key', '-s')
 	('--region', '-r', REGIONS)
 	('--force', '-f')
+	('--iam-role')
 	(function(name, opts) {
 		opts = profiles.defaults(name || opts.profile || 'default', opts);
 
-		var profile = {};
-		profile.profile = opts.profile;
-		profile.region = opts.region;
-		profile['aws-access-key'] = opts['aws-access-key'];
-		profile['aws-secret-key'] = opts['aws-secret-key'];
+		var request = require('request');
 
-		if (!opts.force && (!profile.region || !profile['aws-access-key'] || !profile['aws-secret-key'])) {
-			return error('you need to specify\n--aws-access-key [access-key]\n--aws-secret-key [secret-key]\n--region [region]');
-		}
+		var detectRegion = function(cb) {
+			if (opts.region !== 'auto') return cb(opts.region);
+			request(INSTANCE_DOCUMENT, {json:true}, function(err, response) {
+				if (err) return error(err);
+				cb(response.body.region);
+			});
+		};
 
-		var onvalidated = function() {
+		var onvalidated = function(profile) {
 			profile = profiles.save(profile);
 			output(profile);
 		};
 
-		if (opts.force) return onvalidated();
+		var validate = function(profile) {
+			if (opts.force) return onvalidated(profile);
 
-		kirby(profile).describe(function(err, description) {
-			if (err) return error('profile could not be authenticated');
-			onvalidated();
+			kirby(profile).describe(function(err, description) {
+				if (err) return error('profile could not be authenticated');
+				onvalidated(profile);
+			});
+		};
+
+		detectRegion(function(region) {
+			var profile = {};
+			profile.profile = opts.profile;
+			profile.region = region;
+			profile['aws-access-key'] = opts['aws-access-key'];
+			profile['aws-secret-key'] = opts['aws-secret-key'];
+
+			if (opts['iam-role']) profile['iam-role'] = opts['iam-role'];
+			if (opts.force) return validate(profile);
+
+			if (!opts['iam-role'] && (!profile.region || !profile['aws-access-key'] || !profile['aws-secret-key'])) {
+				return error('you need to specify\n--aws-access-key [access-key]\n--aws-secret-key [secret-key]\n--region [region]');
+			}
+
+			if (opts['iam-role'] && !profile.region) {
+				return error('you need to specify\n--region [region]');
+			}
+
+			validate(profile);
 		});
 	});
 
