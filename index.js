@@ -50,7 +50,6 @@ var kirby = function(config) {
 	};
 
 	var describeInstances = function(filter, callback) {
-
 		var ec2 = new AWS.EC2();
 		ec2.describeInstances(function(err, instances) {
 			if (err) return callback(err);
@@ -60,7 +59,7 @@ var kirby = function(config) {
 				result = result.concat(res.Instances);
 			});
 
-			if (!filter) return callback(null, result);
+			if (!filter || filter === '*') return callback(null, result);
 
 			result = result.filter(function(inst) {
 				var names = Array.prototype.concat.apply([], (inst.Tags || []).map(function(tag) {
