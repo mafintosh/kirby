@@ -50,11 +50,15 @@ exports.save = function(opts) {
 
 	var key = opts.profile === 'default' ? opts.profile : 'profile '+opts.profile;
 
-	profiles[key] = xtend(profiles[key], {
+	var prof = profiles[key] = xtend(profiles[key], {
 		aws_access_key_id: opts['aws-access-key'],
 		aws_secret_access_key: opts['aws-secret-key'],
 		region: opts.region
 	});
+
+	if (!prof.aws_access_key_id) delete prof.aws_access_key_id;
+	if (!prof.aws_secret_access_key) delete prof.aws_secret_access_key;
+	if (!prof.region) delete prof.region;
 
 	if (!fs.existsSync(AWS_FOLDER)) fs.mkdirSync(AWS_FOLDER);
 	fs.writeFileSync(AWS_CONFIG, ini.encode(profiles));
