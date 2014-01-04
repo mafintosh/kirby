@@ -1,45 +1,31 @@
 var path = require('path');
 var fs = require('fs');
 var xtend = require('xtend');
+var ini = require('ini');
 
 var HOME = process.env.HOME || process.env.USERPROFILE;
 var TTL = 24 * 3600 * 1000;
 
 var AWS_CONFIG = path.join(HOME, '.aws', 'config');
-var AWS_PROFILES = fs.existsSync(AWS_CONFIG) ? fs.readFileSync(AWS_CONFIG, 'utf-8') : '';
+var KIRBY_CACHE = path.join(HOME, 'cache', 'kirby.json');
 
-var KIRBY_FOLDER = path.join(HOME, '.kirby');
-var KIRBY_CACHE = path.join(KIRBY_FOLDER, 'cache.json');
-var KIRBY_PROFILES = path.join(KIRBY_FOLDER, 'profiles.json');
-
-if (!fs.existsSync(KIRBY_FOLDER)) fs.mkdirSync(KIRBY_FOLDER);
-
-AWS_PROFILES = (AWS_PROFILES.match(/\[(?:profile )?.+\]([^\[]+)/gm) || [])
-	.map(function(profile) {
-		var match = function(pattern) {
-			return (profile.match(pattern) || [])[1];
-		};
-
-		return {
-			profile: match(/\[(?:profile )?(.+)\]/i),
-			'aws-access-key': match(/aws_access_key_id\s*=\s*(\S+)/i),
-			'aws-secret-key': match(/aws_secret_access_key\s*=\s*(\S+)/i),
-			region: match(/region\s*=\s*(\S+)/i)
-		};
-	})
-	.reduce(function(result, profile) {
-		result[profile.profile] = profile;
-		return result;
-	}, {});
-
-var profiles = fs.existsSync(KIRBY_PROFILES) ? require(KIRBY_PROFILES) : {};
+var profiles = ini.decode(fs.existsSync(AWS_CONFIG) ? fs.readFileSync(AWS_CONFIG, 'utf-8') : '');
 var cache = fs.existsSync(KIRBY_CACHE) ? require(KIRBY_CACHE) : {};
 
 exports.defaults = function(profile, opts) {
 	if (profile && typeof profile !== 'string') return exports.defaults(profile.profile, profile);
 	if (!profile) profile = 'default';
 
-	opts = xtend(AWS_PROFILES[profile], profiles[profile], opts || {});
+	var key = profile === 'default' ? profile : 'profile '+profile;
+	var saved = profiles[key] || {};
+
+	var prof = {
+		'aws-access-key': saved.aws_access_key_id,
+		'aws-secret-key': saved.aws_secret_access_key,
+		region: saved.region
+	};
+
+	opts = xtend(prof, opts || {});
 	opts.profile = opts.profile || 'default';
 
 	opts.cache = function(key, value) {
@@ -56,16 +42,21 @@ exports.defaults = function(profile, opts) {
 
 exports.save = function(opts) {
 	opts.profile = opts.profile || 'default';
-	profiles[opts.profile] = opts;
 
-	Object.keys(opts).forEach(function(key) {
-		if (opts[key] === null || opts[key] === false) delete opts[key];
+	var key = opts.profile === 'default' ? opts.profile : 'profile '+opts.profile;
+
+	profiles[key] = xtend(profiles[key], {
+		aws_access_key_id: opts['aws-access-key'],
+		aws_secret_access_key: opts['aws-secret-key'],
+		region: opts.region
 	});
 
-	fs.writeFileSync(KIRBY_PROFILES, JSON.stringify(profiles, null, '  '));
+	fs.writeFileSync(AWS_CONFIG, ini.encode(profiles));
 	return exports.defaults(opts);
 };
 
 exports.names = function() {
-	return Object.keys(xtend(AWS_PROFILES, profiles));
+	return Object.keys(profiles).map(function(key) {
+		return key.replace('profile ', '');
+	});
 };

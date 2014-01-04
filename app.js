@@ -144,53 +144,45 @@ tab('profile')(profileNames)
 	('--aws-secret-key', '-s')
 	('--region', '-r', REGIONS)
 	('--force', '-f')
-	('--iam-role')
 	(function(name, opts) {
 		opts = profiles.defaults(name || opts.profile || 'default', opts);
 
+		var onvalidated = function() {
+			opts = profiles.save(opts);
+
+			var filtered = ['profile', 'aws-access-key', 'aws-secret-key', 'region'].reduce(function(result, key) {
+				if (opts[key]) result[key] = opts[key];
+				return result;
+			}, {});
+
+			output(filtered);
+		};
+
+		var validate = function() {
+			if (opts.force) return onvalidated();
+
+			kirby(opts).describe(function(err) {
+				if (!err) return onvalidated();
+
+				var missing = '';
+				if (!opts['aws-access-key']) missing += '--aws-access-key [access-key]\n';
+				if (!opts['aws-secret-key']) missing += '--aws-secret-key [secret-key]\n';
+				if (!opts.region) missing += '--region [region]';
+
+				if (!missing) return error('Profile could not be authenticated.');
+
+				error('Profile could not be authenticated. Try specifying:\n'+missing);
+			});
+		};
+
+		if (opts.region !== 'auto') return validate();
+
 		var request = require('request');
 
-		var detectRegion = function(cb) {
-			if (opts.region !== 'auto') return cb(opts.region);
-			request(INSTANCE_DOCUMENT, {json:true}, function(err, response) {
-				if (err) return error(err);
-				cb(response.body.region);
-			});
-		};
-
-		var onvalidated = function(profile) {
-			profile = profiles.save(profile);
-			output(profile);
-		};
-
-		var validate = function(profile) {
-			if (opts.force) return onvalidated(profile);
-
-			kirby(profile).describe(function(err, description) {
-				if (err) return error('profile could not be authenticated');
-				onvalidated(profile);
-			});
-		};
-
-		detectRegion(function(region) {
-			var profile = {};
-			profile.profile = opts.profile;
-			profile.region = region;
-			profile['aws-access-key'] = opts['aws-access-key'];
-			profile['aws-secret-key'] = opts['aws-secret-key'];
-
-			if (opts['iam-role']) profile['iam-role'] = opts['iam-role'];
-			if (opts.force) return validate(profile);
-
-			if (!opts['iam-role'] && (!profile.region || !profile['aws-access-key'] || !profile['aws-secret-key'])) {
-				return error('you need to specify\n--aws-access-key [access-key]\n--aws-secret-key [secret-key]\n--region [region]');
-			}
-
-			if (opts['iam-role'] && !profile.region) {
-				return error('you need to specify\n--region [region]');
-			}
-
-			validate(profile);
+		request(INSTANCE_DOCUMENT, {json:true}, function(err, response) {
+			if (err) return error(err);
+			opts.region = response.body.region;
+			validate();
 		});
 	});
 
@@ -200,7 +192,7 @@ tab('user-data')(names)
 
 		kirby(opts).userData(name, function(err, userData) {
 			if (err) return callback(err);
-			if (!userData) return error('no user-data available');
+			if (!userData) return error('No user-data available');
 			console.log(userData);
 		});
 	});
@@ -223,7 +215,7 @@ tab('login')(names)
 
 		kirby(opts).instances(name, {running:true}, function(err, instances) {
 			if (err) return error(err);
-			if (!instances.length) return error('no instances found');
+			if (!instances.length) return error('No instances found');
 			if (instances.length === 1 || opts.one) return login(instances[0].publicDns);
 
 			var padding = instances.reduce(function(max, inst) {
@@ -299,7 +291,7 @@ var script = function(val, def, callback) {
 		return;
 	}
 
-	if (!fs.existsSync(val)) return error('script file does not exist');
+	if (!fs.existsSync(val)) return error('Script file does not exist');
 	callback(fs.readFileSync(val, 'utf-8'));
 };
 
@@ -316,7 +308,7 @@ tab('exec')(names)
 
 		var key = opts.key || path.join(HOME, '.ssh', 'id_rsa');
 		if (fs.existsSync(key)) opts.key = fs.readFileSync(key);
-		else error('key file does not exist');
+		else error('Key file does not exist');
 
 		var oncommand = function(cmd) {
 			var proc = kirby(opts).exec(name, cmd, opts);
@@ -431,8 +423,8 @@ tab('launch')(names)
 
 		var def = ''+
 			'#!/bin/bash\n'+
-			'# user-data is run on instance boot\n'+
-			'# use "kirby user-data" to view other instances user-data\n';
+			'# user-data is run on instance boot.\n'+
+			'# Run "kirby user-data" to view other instances user-data\n';
 
 		script(opts['user-data'], def, function(val) {
 			opts['user-data'] = val;
