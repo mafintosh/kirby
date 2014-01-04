@@ -52,7 +52,8 @@ The available commands are
               with the aws cli tools
                 --aws-access-key,-a [access-key] to specify the AWS access key to use
                 --aws-secret-key,-s [secret-key] to specify the AWS secret key to use
-                --region,-r [region-name] to set the used region. Defaults to us-east-1
+                --region,-r [region-name] to set the used AWS region.
+                --iam-role to specify that this profile is using an iam role
 
 All commands accept --profile,-p [profile-name] to set the used profile to something
 other than default
