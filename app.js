@@ -161,17 +161,17 @@ tab('profile')(profileNames)
 		var validate = function() {
 			if (opts.force) return onvalidated();
 
-			kirby(opts).describe(function(err) {
+			kirby(opts).instances(function(err) {
 				if (!err) return onvalidated();
 
 				var missing = '';
 				if (!opts['aws-access-key']) missing += '--aws-access-key [access-key]\n';
 				if (!opts['aws-secret-key']) missing += '--aws-secret-key [secret-key]\n';
-				if (!opts.region) missing += '--region [region]';
+				if (!opts.region) missing += '--region [region]\n';
 
 				if (!missing) return error('Profile could not be authenticated.');
 
-				error('Profile could not be authenticated. Try specifying:\n'+missing);
+				error('Profile could not be authenticated. Try specifying:\n'+missing.trim());
 			});
 		};
 
