@@ -390,7 +390,7 @@ tab('launch')(names)
 	('--user-data', '-u', '@file')
 	('--ami-id', '-i', completeImages)
 	('--wait', '-w')
-	('--defaults', '-d')
+	('--defaults', '-d', names)
 	('--no-defaults')
 	(function(name, opts) {
 		opts = profiles.defaults(opts);
