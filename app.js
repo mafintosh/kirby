@@ -43,7 +43,8 @@ var kirby = function(opts) {
 	return require('./index')({
 		region:opts.region,
 		key:opts['aws-access-key'],
-		secret:opts['aws-secret-key']
+		secret:opts['aws-secret-key'],
+		ssl: opts.ssl
 	});
 };
 
@@ -137,7 +138,8 @@ var profileNames = function(callback) {
 };
 
 tab('*')
-	('--profile', '-p', profileNames);
+	('--profile', '-p', profileNames)
+	('--no-ssl');
 
 tab('profile')(profileNames)
 	('--aws-access-key', '-a')

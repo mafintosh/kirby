@@ -41,7 +41,8 @@ var kirby = function(config) {
 		AWS.config.update({
 			accessKeyId: config.key,
 			secretAccessKey: config.secret,
-			region: config.region
+			region: config.region,
+			sslEnabled: config.ssl !== false
 		});
 	}
 
