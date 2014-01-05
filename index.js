@@ -223,7 +223,7 @@ var kirby = function(config) {
 		};
 
 		describeInstances(filter, wait());
-		if (opts.loadBalancer === false) instanceToLoadBalancer(wait());
+		if (opts.loadBalancers !== false) instanceToLoadBalancer(wait());
 	};
 
 	var describeHostnames = function(filter, callback) {

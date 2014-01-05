@@ -213,7 +213,7 @@ tab('login')(names)
 			proc.spawn('ssh', args.concat(user+'@'+host), {stdio:'inherit'});
 		};
 
-		kirby(opts).instances(name, {running:true}, function(err, instances) {
+		kirby(opts).instances(name, {running:true, loadBalancers:false}, function(err, instances) {
 			if (err) return error(err);
 			if (!instances.length) return error('No instances found');
 			if (instances.length === 1 || opts.one) return login(instances[0].publicDns);
