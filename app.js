@@ -412,6 +412,7 @@ tab('launch')(names)
 				set('load-balancer');
 				set('security-group');
 				set('iam-role');
+				set('instance-type');
 
 				kirby(opts).launch(name, opts, function(err, instance) {
 					if (err) return error(err);
